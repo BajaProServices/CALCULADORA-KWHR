@@ -6,216 +6,47 @@
     <title>Cotizador Solar | BAJA PRO-SERVICES</title>
     <style>
         :root {
-            --emerald-bg: #d1fae5; 
+            --emerald-bg: #d1fae5;
             --emerald-primary: #10b981;
             --emerald-dark: #064e3b;
             --emerald-accent: #059669;
             --white: #ffffff;
             --text-main: #1f2937;
         }
-
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background-color: var(--emerald-bg);
-            margin: 0;
-            padding: 0;
-            color: var(--text-main);
-        }
-
-        .top-bar {
-            background-color: var(--emerald-dark);
-            color: white;
-            text-align: center;
-            padding: 8px 10px;
-            font-size: 11px;
-            font-weight: 600;
-            letter-spacing: 0.5px;
-            text-transform: uppercase;
-        }
-
-        .hero-container {
-            width: 100%;
-            max-width: 800px;
-            margin: 0 auto;
-            position: relative;
-        }
-
-        .hero-image {
-            width: 100%;
-            height: auto;
-            display: block;
-            border-bottom: 4px solid var(--emerald-primary);
-        }
-
-        .container {
-            max-width: 600px;
-            margin: 20px auto 50px;
-            background: var(--white);
-            padding: 35px;
-            border-radius: 20px;
-            box-shadow: 0 15px 35px rgba(6, 78, 59, 0.1);
-            position: relative;
-            z-index: 10;
-        }
-
-        .lang-switch {
-            display: flex;
-            justify-content: flex-end;
-            gap: 10px;
-            margin-bottom: 15px;
-        }
-
-        .lang-btn {
-            background: transparent;
-            border: 1px solid var(--emerald-primary);
-            color: var(--emerald-primary);
-            padding: 5px 15px;
-            border-radius: 20px;
-            cursor: pointer;
-            font-weight: bold;
-            font-size: 12px;
-        }
-
-        .lang-btn.active {
-            background: var(--emerald-primary);
-            color: white;
-        }
-
-        header {
-            text-align: center;
-            margin-bottom: 30px;
-            border-bottom: 2px solid #f0fdf4;
-            padding-bottom: 15px;
-        }
-
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: var(--emerald-bg); margin: 0; padding: 0; color: var(--text-main); }
+     .top-bar { background-color: var(--emerald-dark); color: white; text-align: center; padding: 8px 10px; font-size: 11px; font-weight: 600; letter-spacing: 0.5px; text-transform: uppercase; }
+     .hero-container { width: 100%; max-width: 800px; margin: 0 auto; position: relative; }
+     .hero-image { width: 100%; height: auto; display: block; border-bottom: 4px solid var(--emerald-primary); }
+     .container { max-width: 600px; margin: 20px auto 50px; background: var(--white); padding: 35px; border-radius: 20px; box-shadow: 0 15px 35px rgba(6, 78, 59, 0.1); position: relative; z-index: 10; }
+     .lang-switch { display: flex; justify-content: flex-end; gap: 10px; margin-bottom: 15px; }
+     .lang-btn { background: transparent; border: 1px solid var(--emerald-primary); color: var(--emerald-primary); padding: 5px 15px; border-radius: 20px; cursor: pointer; font-weight: bold; font-size: 12px; }
+     .lang-btn.active { background: var(--emerald-primary); color: white; }
+        header { text-align: center; margin-bottom: 30px; border-bottom: 2px solid #f0fdf4; padding-bottom: 15px; }
         header h1 { margin: 0; color: var(--emerald-dark); font-size: 26px; }
         header p { margin: 5px 0 0; font-size: 13px; color: var(--emerald-primary); font-weight: 700; }
-
-        .section-title {
-            font-weight: 700;
-            margin: 25px 0 12px;
-            display: block;
-            border-left: 4px solid var(--emerald-primary);
-            padding-left: 12px;
-            color: var(--emerald-dark);
-            font-size: 15px;
-            text-transform: uppercase;
-        }
-
-        input, select, label {
-            width: 100%;
-            box-sizing: border-box;
-        }
-
+     .section-title { font-weight: 700; margin: 25px 0 12px; display: block; border-left: 4px solid var(--emerald-primary); padding-left: 12px; color: var(--emerald-dark); font-size: 15px; text-transform: uppercase; }
+        input, select, label { width: 100%; box-sizing: border-box; }
         label { display: block; margin-bottom: 6px; font-size: 14px; font-weight: 600; color: var(--emerald-dark); }
-
-        input, select {
-            padding: 12px;
-            margin-bottom: 18px;
-            background: #fff;
-            border: 1px solid #d1d5db;
-            border-radius: 10px;
-            font-size: 15px;
-            color: var(--text-main);
-        }
-
-        .inputs-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 10px;
-            background: #f0fdf4;
-            padding: 15px;
-            border-radius: 12px;
-            margin-bottom: 20px;
-        }
-
-        .cert-card {
-            background: #f9fafb;
-            border: 1px solid #e5e7eb;
-            padding: 12px;
-            border-radius: 10px;
-            margin-bottom: 10px;
-            font-size: 13px;
-        }
-
-        .icon-grid {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 15px;
-            margin: 25px 0;
-            text-align: center;
-        }
-
-        .icon-item img {
-            width: 45px;
-            height: 45px;
-            object-fit: contain;
-            margin-bottom: 8px;
-        }
-
-        .icon-item span {
-            display: block;
-            font-size: 10px;
-            font-weight: 800;
-            color: var(--emerald-dark);
-            line-height: 1.2;
-        }
-
-        .result-box {
-            background: var(--emerald-dark);
-            color: white;
-            padding: 25px;
-            border-radius: 15px;
-            text-align: center;
-            margin: 25px 0;
-            border-bottom: 5px solid var(--emerald-primary);
-        }
-
-        .result-value {
-            font-size: 38px;
-            font-weight: 800;
-            color: var(--emerald-primary);
-            margin: 10px 0;
-        }
-
-        .panel-selector {
-            background: rgba(255,255,255,0.1);
-            padding: 10px;
-            border-radius: 8px;
-            margin-top: 15px;
-            border: 1px solid var(--emerald-primary);
-        }
-
-        .panel-selector select {
-            margin-bottom: 0;
-            background: var(--emerald-dark);
-            color: white;
-            border: none;
-            font-weight: bold;
-            text-align: center;
-        }
-
-        button {
-            width: 100%;
-            background-color: var(--emerald-primary);
-            color: white;
-            padding: 18px;
-            border: none;
-            border-radius: 12px;
-            font-size: 16px;
-            font-weight: 700;
-            cursor: pointer;
-            text-transform: uppercase;
-        }
-
-        .hidden { display: none; }
+        input, select { padding: 12px; margin-bottom: 18px; background: #fff; border: 1px solid #d1d5db; border-radius: 10px; font-size: 15px; color: var(--text-main); }
+     .inputs-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; background: #f0fdf4; padding: 15px; border-radius: 12px; margin-bottom: 20px; }
+     .cert-card { background: #f9fafb; border: 1px solid #e5e7eb; padding: 12px; border-radius: 10px; margin-bottom: 10px; font-size: 13px; }
+     .icon-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; margin: 25px 0; text-align: center; }
+     .icon-item img { width: 45px; height: 45px; object-fit: contain; margin-bottom: 8px; }
+     .icon-item span { display: block; font-size: 10px; font-weight: 800; color: var(--emerald-dark); line-height: 1.2; }
+     .result-box { background: var(--emerald-dark); color: white; padding: 25px; border-radius: 15px; text-align: center; margin: 25px 0; border-bottom: 5px solid var(--emerald-primary); }
+     .result-value { font-size: 38px; font-weight: 800; color: var(--emerald-primary); margin: 10px 0; }
+     .panel-selector { background: rgba(255,255,255,0.1); padding: 10px; border-radius: 8px; margin-top: 15px; border: 1px solid var(--emerald-primary); }
+     .panel-selector select { margin-bottom: 0; background: var(--emerald-dark); color: white; border: none; font-weight: bold; text-align: center; }
+        button { width: 100%; background-color: var(--emerald-primary); color: white; padding: 18px; border: none; border-radius: 12px; font-size: 16px; font-weight: 700; cursor: pointer; text-transform: uppercase; }
+     .hidden { display: none; }
+     .checkbox-suma { display: flex; align-items: center; gap: 8px; margin: 12px 0; font-size: 13px; }
+     .checkbox-suma input { width: auto; margin: 0; }
+     .precio-tachado { text-decoration: line-through; color: #9ca3af; font-size: 12px; }
     </style>
 </head>
 <body>
 
-<div class="top-bar">
-    CABO SAN LUCAS • SAN JOSÉ DEL CABO • LA PAZ, BCS, MX
-</div>
+<div class="top-bar">CABO SAN LUCAS • SAN JOSÉ DEL CABO • LA PAZ, BCS, MX</div>
 
 <div class="hero-container">
     <img src="Hero.png" alt="Hero" class="hero-image">
@@ -269,12 +100,8 @@
         </div>
 
         <span class="section-title" id="t-certs">Certificaciones y Calidad</span>
-        <div class="cert-card">
-            <strong>EC0586.01:</strong> <span id="cert1">Instalación de Sistemas Fotovoltaicos (PFVI).</span>
-        </div>
-        <div class="cert-card">
-            <strong>EC1181:</strong> <span id="cert2">Supervisión de Instalaciones (IPV).</span>
-        </div>
+        <div class="cert-card"><strong>EC0586.01:</strong> <span id="cert1">Instalación de Sistemas Fotovoltaicos (PFVI).</span></div>
+        <div class="cert-card"><strong>EC1181:</strong> <span id="cert2">Supervisión de Instalaciones (IPV).</span></div>
 
         <div class="icon-grid">
             <div class="icon-item"><img src="110Ah.png" alt="110Ah"><span>110Ah</span></div>
@@ -291,7 +118,6 @@
         <div class="result-box">
             <div id="t-result">SISTEMA SUGERIDO:</div>
             <div class="result-value"><span id="panelCount">0</span> <span id="t-panels">PANELES</span></div>
-            
             <div class="panel-selector">
                 <label style="color: white; font-size: 10px; margin-bottom: 4px;">TIPO DE PANEL:</label>
                 <select id="panelWatts" onchange="calcular()">
@@ -303,10 +129,36 @@
             <div style="font-size: 9px; opacity: 0.8; font-weight: bold; margin-top: 10px; letter-spacing: 1px;">ZONA BCS | 6.19 HSP | EFF 85%</div>
         </div>
 
+        <div id="whatsappLeadSection" style="display:none; text-align:center; margin-top:24px;">
+          <div style="background:#f0fdf4; padding:20px; border-radius:12px; border:2px solid #10b981;">
+            <p style="font-size:16px; color:#064e3b; margin:0 0 4px; font-weight:700;">⚡ Tu sistema recomendado</p>
+            <p id="descripcionSistema" style="font-size:13px; color:#059669; margin:0 0 12px; font-weight:600;">Cargando...</p>
+            <p style="font-size:13px; color:#064e3b; margin:0 0 8px;">
+              <strong><span id="sistemaRecomendado">0</span>kW</strong> |
+              <span id="precioContainer">
+                <strong>$<span id="precioSistema">0</span></strong>
+              </span> Inst+IVA incl
+            </p>
+
+            <div class="checkbox-suma">
+              <input type="checkbox" id="cuponSuma" onchange="actualizarBotonWhatsApp()">
+              <label for="cuponSuma" style="margin:0; font-weight:600; color:#064e3b; cursor:pointer;">Tengo cupón 10% en app SUMA</label>
+            </div>
+
+            <div style="background:#fff; padding:10px; border-radius:8px; margin:12px 0;">
+              <p style="font-size:12px; color:#666; margin:0 0 4px;">Tu recibo CFE estimado actual:</p>
+              <p style="font-size:20px; color:#dc2626; margin:0; font-weight:800;">$<span id="reciboActual">0</span>/mes</p>
+              <p style="font-size:12px; color:#059669; margin:8px 0 0; font-weight:700;">Con solar: $0/mes → Ahorras $<span id="ahorroEstimado">0</span>/mes</p>
+            </div>
+            <a id="btnWhatsAppBajaPro" href="#" target="_blank" style="display:inline-block; background:#25D366; color:#fff; font-weight:700; font-size:16px; padding:14px 28px; border-radius:8px; text-decoration:none; box-shadow:0 4px 12px rgba(0,0,0,0.15); text-transform:uppercase;">Enviar resultado por WhatsApp y recibir cotización gratis</a>
+            <p style="font-size:11px; color:#666; margin:12px 0 0; line-height:1.4;">Un asesor te contacta hoy mismo. Sin compromiso.<br><strong>WhatsApp Ventas: +52 1 612 219 8325</strong> | <strong>Servicio Técnico: +52 1 612 167 3200</strong><br><strong>servicesbajapro@gmail.com</strong></p>
+          </div>
+        </div>
+
         <label id="l-dept">Enviar a departamento:</label>
         <select id="waNumber">
-            <option value="5216122198325">SALES CEO</option>
-            <option value="5216121673200">SALES AND TECHNICAL SUPPORT</option>
+            <option value="5216122198325">VENTAS</option>
+            <option value="5216121673200">SERVICIO TÉCNICO</option>
         </select>
 
         <button type="button" onclick="enviarWA()" id="btn-wa">SOLICITAR COTIZACIÓN</button>
@@ -314,23 +166,63 @@
 </div>
 
 <script>
-    const HSP = 6.19; 
-    const EFFICIENCY = 0.85; 
+    const HSP = 6.19;
+    const EFFICIENCY = 0.85;
+    const DESCUENTO_SUMA = 0.10;
+
+    const TARIFAS_CFE_2026 = {
+      basico: { limite: 150, precio: 1.04 },
+      intermedio: { limite: 130, precio: 1.27 },
+      excedente: { precio: 3.73 },
+      dac: { umbral: 500, precio: 6.75 },
+      iva: 0.16
+    };
+
+    const SISTEMAS_INTERCONECTADOS = {
+      3: { nombre: "Sistema Interconectado 3kW", desc: "Ideal para casas pequeñas", paneles: 6, inversor: "3kw", precio: 57200 },
+      4: { nombre: "Sistema Interconectado 4kW", desc: "Perfecto para hogares promedio", paneles: 8, inversor: "4kw", precio: 76260 },
+      5: { nombre: "Sistema Interconectado 5kW", desc: "Para familias grandes", paneles: 10, inversor: "5kw", precio: 95300 },
+      6: { nombre: "Sistema Interconectado 6kW", desc: "Para casas grandes con alto consumo", paneles: 12, inversor: "6kw", precio: 114400 },
+      7: { nombre: "Sistema Interconectado 7kW", desc: "Ideal para pequeñas empresas", paneles: 14, inversor: "7kw", precio: 133462 },
+      8: { nombre: "Sistema Interconectado 8kW", desc: "Para negocios medianos", paneles: 16, inversor: "8kw", precio: 152528 }
+    };
 
     function alternarInputs() {
         const tipo = document.getElementById('tipoTarifa').value;
-        document.getElementById('gridBimestre').classList.toggle('hidden', tipo !== 'bimestral');
-        document.getElementById('gridMes').classList.toggle('hidden', tipo !== 'mensual');
+        document.getElementById('gridBimestre').classList.toggle('hidden', tipo!== 'bimestral');
+        document.getElementById('gridMes').classList.toggle('hidden', tipo!== 'mensual');
         calcular();
+    }
+
+    function calcularReciboCFE(kwhMensual) {
+      let costo = 0;
+      let kwhRestante = kwhMensual;
+      const t = TARIFAS_CFE_2026;
+      if (kwhMensual > t.dac.umbral) {
+        costo = kwhMensual * t.dac.precio;
+      } else {
+        const kwhBasico = Math.min(kwhRestante, t.basico.limite);
+        costo += kwhBasico * t.basico.precio;
+        kwhRestante -= kwhBasico;
+        if (kwhRestante > 0) {
+          const kwhIntermedio = Math.min(kwhRestante, t.intermedio.limite);
+          costo += kwhIntermedio * t.intermedio.precio;
+          kwhRestante -= kwhIntermedio;
+        }
+        if (kwhRestante > 0) {
+          costo += kwhRestante * t.excedente.precio;
+        }
+      }
+      return Math.round(costo * (1 + t.iva));
     }
 
     function calcular() {
         let totalKwh = 0;
         let count = 0;
         const tipo = document.getElementById('tipoTarifa').value;
-        const selector = tipo === 'bimestral' ? '.in-kwh' : '.in-kwh-m';
-        const divisorDias = tipo === 'bimestral' ? 61 : 30.4;
-        const currentPanelWatt = document.getElementById('panelWatts').value;
+        const selector = tipo === 'bimestral'? '.in-kwh' : '.in-kwh-m';
+        const divisorDias = tipo === 'bimestral'? 61 : 30.4;
+        const currentPanelWatt = Number(document.getElementById('panelWatts').value);
 
         document.querySelectorAll(selector).forEach(i => {
             if(i.value > 0) {
@@ -343,15 +235,68 @@
             const promedioDiarioKwh = (totalKwh / count) / divisorDias;
             const kwpNecesario = (promedioDiarioKwh / HSP) / EFFICIENCY;
             const numeroPaneles = Math.ceil((kwpNecesario * 1000) / currentPanelWatt);
-            
             document.getElementById('panelCount').innerText = numeroPaneles;
         } else {
             document.getElementById('panelCount').innerText = 0;
         }
+        actualizarBotonWhatsApp();
     }
 
-    document.querySelectorAll('input').forEach(input => {
-        input.addEventListener('input', calcular);
+    function actualizarBotonWhatsApp() {
+      const panelesCalc = parseInt(document.getElementById('panelCount').innerText) || 0;
+      const wattsPorPanel = parseInt(document.getElementById('panelWatts').value) || 550;
+
+      if(panelesCalc === 0) {
+        document.getElementById('whatsappLeadSection').style.display = 'none';
+        return;
+      }
+
+      const kwNecesarios = (panelesCalc * wattsPorPanel) / 1000;
+      const kwRedondeado = Math.ceil(kwNecesarios);
+
+      const kwsDisponibles = Object.keys(SISTEMAS_INTERCONECTADOS).map(Number).sort((a,b) => a-b);
+      let kwElegido = kwsDisponibles.find(kw => kw >= kwRedondeado) || 8;
+      const sistemaBase = SISTEMAS_INTERCONECTADOS[kwElegido];
+      const sistemaElegido = {...sistemaBase, kw: kwElegido };
+
+      document.getElementById('panelCount').innerText = sistemaElegido.paneles;
+
+      let totalKwh = 0, count = 0;
+      const tipo = document.getElementById('tipoTarifa').value;
+      const selector = tipo === 'bimestral'? '.in-kwh' : '.in-kwh-m';
+      document.querySelectorAll(selector).forEach(i => {
+        if(i.value > 0) { totalKwh += Number(i.value); count++; }
+      });
+      const promedioKwhPeriodo = count > 0? Math.round(totalKwh / count) : 0;
+      const promedioKwhMensual = promedioKwhPeriodo * (tipo === 'bimestral'? 0.5 : 1);
+
+      const reciboSinSolar = calcularReciboCFE(promedioKwhMensual);
+      const tieneSuma = document.getElementById('cuponSuma').checked;
+      const precioFinal = tieneSuma? Math.round(sistemaElegido.precio * (1 - DESCUENTO_SUMA)) : sistemaElegido.precio;
+
+      document.getElementById('sistemaRecomendado').innerText = sistemaElegido.kw;
+      document.getElementById('descripcionSistema').innerText = `${sistemaElegido.nombre} – ${sistemaElegido.desc} | ${sistemaElegido.paneles} paneles / Inversor ${sistemaElegido.inversor}`;
+
+      if (tieneSuma) {
+        document.getElementById('precioContainer').innerHTML = `<span class="precio-tachado">$${sistemaElegido.precio.toLocaleString('es-MX')}</span> <strong style="color:#059669;">$${precioFinal.toLocaleString('es-MX')}</strong> <span style="background:#dcfce7; color:#059669; padding:2px 6px; border-radius:4px; font-size:11px; font-weight:700;">-10% SUMA</span>`;
+      } else {
+        document.getElementById('precioContainer').innerHTML = `<strong>$${sistemaElegido.precio.toLocaleString('es-MX')}</strong>`;
+      }
+
+      document.getElementById('reciboActual').innerText = reciboSinSolar.toLocaleString('es-MX');
+      document.getElementById('ahorroEstimado').innerText = reciboSinSolar.toLocaleString('es-MX');
+      document.getElementById('whatsappLeadSection').style.display = 'block';
+
+      const nombre = document.getElementById('nombre').value || 'Cliente';
+      const periodo = tipo === 'bimestral'? 'bimestral' : 'mensual';
+      const textoSuma = tieneSuma? `%0A🎟️ Presentaré mi cupón SUMA para 10% descuento` : '';
+      const mensaje = `Hola Baja Pro-Services, usé la calculadora:%0A%0A⚡ Consumo prom: ${promedioKwhPeriodo} kWh ${periodo}%0A💸 Recibo actual: $${reciboSinSolar.toLocaleString('es-MX')}/mes%0A💰 Ahorro con solar: $${reciboSinSolar.toLocaleString('es-MX')}/mes%0A🔋 ${sistemaElegido.nombre}%0A📋 ${sistemaElegido.paneles} paneles / Inversor ${sistemaElegido.inversor}%0A💵 Inversión: $${precioFinal.toLocaleString('es-MX')} Inst+IVA incl${textoSuma}%0A%0AQuiero mi cotización formal gratis. Mi nombre es ${nombre}.`;
+      document.getElementById('btnWhatsAppBajaPro').href = `https://wa.me/5216122198325?text=${mensaje}`;
+    }
+
+    document.querySelectorAll('.in-kwh,.in-kwh-m, #panelWatts, #tipoTarifa').forEach(el => {
+        el.addEventListener('input', calcular);
+        el.addEventListener('change', calcular);
     });
 
     function enviarWA() {
@@ -361,22 +306,20 @@
         const panels = document.getElementById('panelCount').innerText;
         const watts = document.getElementById('panelWatts').value;
         const num = document.getElementById('waNumber').value;
-
         if(!nombre || panels === "0") {
             alert("Por favor ingrese sus datos y consumo.");
             return;
         }
-
-        const msg = encodeURIComponent(
-            `*COTIZACIÓN SOLAR - BAJA PRO-SERVICES*\n` +
-            `Cliente: ${nombre}\n` +
-            `WhatsApp: ${tel}\n` +
-            `Ubicación: ${loc}\n` +
-            `Sugerencia: ${panels} Paneles de ${watts}W\n` +
-            `Cálculo basado en 6.19 HSP (BCS)`
-        );
+        const msg = encodeURIComponent(`*COTIZACIÓN SOLAR - BAJA PRO-SERVICES*\nCliente: ${nombre}\nWhatsApp: ${tel}\nUbicación: ${loc}\nSugerencia: ${panels} Paneles de ${watts}W\nCálculo basado en 6.19 HSP (BCS)`);
         window.open(`https://wa.me/${num}?text=${msg}`, '_blank');
     }
+
+    function changeLang(lang) {
+        document.getElementById('btn-es').classList.toggle('active', lang === 'es');
+        document.getElementById('btn-en').classList.toggle('active', lang === 'en');
+    }
+
+    document.addEventListener('DOMContentLoaded', calcular);
 </script>
 </body>
 </html>
