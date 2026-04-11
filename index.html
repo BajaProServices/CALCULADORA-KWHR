@@ -1,6 +1,196 @@
 <index.html>
 <html lang="es">
 <head>
+<!-- Playables SDK -->
+<script>// Playables SDK v1.0.0
+// Game lifecycle bridge: rAF-based game-ready detection + event communication
+(function() {
+  'use strict';
+
+  // Idempotency: skip if already initialized (e.g., server-side injection
+  // followed by client-side inject-javascript via the Bloks webview component).
+  if (window.playablesSDK) return;
+
+  var HANDLER_NAME = 'playablesGameEventHandler';
+  var ANDROID_BRIDGE_NAME = '_MetaPlayablesBridge';
+  var RAF_FRAME_THRESHOLD = 3;
+
+  var gameReadySent = false;
+  var firstInteractionSent = false;
+  var errorSent = false;
+  var frameCount = 0;
+  var originalRAF = window.requestAnimationFrame;
+
+  // --- Transport Layer ---
+
+  function hasIOSBridge() {
+    return !!(window.webkit &&
+              window.webkit.messageHandlers &&
+              window.webkit.messageHandlers[HANDLER_NAME]);
+  }
+
+  function hasAndroidBridge() {
+    return !!(window[ANDROID_BRIDGE_NAME] &&
+              typeof window[ANDROID_BRIDGE_NAME].postEvent === 'function');
+  }
+
+  function isInIframe() {
+    return !!(window.parent && window.parent !== window);
+  }
+
+  function sendEvent(eventName, payload) {
+    var message = {
+      type: eventName,
+      payload: payload || {},
+      timestamp: Date.now()
+    };
+
+    if (hasIOSBridge()) {
+      try {
+        window.webkit.messageHandlers[HANDLER_NAME].postMessage(message);
+      } catch (e) { /* ignore */ }
+      return;
+    }
+
+    if (hasAndroidBridge()) {
+    try {
+      var p = payload || {};
+      p.__secureToken = window.__fbAndroidBridgeAuthToken || '';
+      window[ANDROID_BRIDGE_NAME].postEvent(
+        eventName,
+        JSON.stringify(p)
+      );
+    } catch (e) { /* ignore */ }
+    return;
+  }
+
+    if (isInIframe()) {
+      try {
+        window.parent.postMessage(message, '*');
+      } catch (e) { /* ignore */ }
+      return;
+    }
+  }
+
+  // --- rAF Game-Ready Detection ---
+
+  function onFrame() {
+    if (gameReadySent) return;
+
+    frameCount++;
+    if (frameCount >= RAF_FRAME_THRESHOLD) {
+      gameReadySent = true;
+      sendEvent('game_ready', {
+        frame_count: frameCount,
+        detected_at: Date.now()
+      });
+      return;
+    }
+
+    originalRAF.call(window, onFrame);
+  }
+
+  if (originalRAF) {
+    window.requestAnimationFrame = function(callback) {
+      if (!gameReadySent) {
+        return originalRAF.call(window, function(timestamp) {
+          frameCount++;
+          if (frameCount >= RAF_FRAME_THRESHOLD && !gameReadySent) {
+            gameReadySent = true;
+            sendEvent('game_ready', {
+              frame_count: frameCount,
+              detected_at: Date.now()
+            });
+          }
+          callback(timestamp);
+        });
+      }
+      return originalRAF.call(window, callback);
+    };
+  }
+
+  // --- First User Interaction Detection ---
+
+  function setupFirstInteractionDetection() {
+    var events = ['touchstart', 'mousedown', 'keydown'];
+
+    function onFirstInteraction() {
+      if (firstInteractionSent) return;
+      firstInteractionSent = true;
+      sendEvent('user_interaction_start', null);
+
+      for (var i = 0; i < events.length; i++) {
+        document.removeEventListener(events[i], onFirstInteraction, true);
+      }
+    }
+
+    for (var i = 0; i < events.length; i++) {
+      document.addEventListener(events[i], onFirstInteraction, true);
+    }
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', setupFirstInteractionDetection);
+  } else {
+    setupFirstInteractionDetection();
+  }
+
+  // --- Auto Error Capture ---
+
+  window.addEventListener('error', function(event) {
+    if (errorSent) return;
+    errorSent = true;
+    sendEvent('error', {
+      message: event.message || 'Unknown error',
+      source: event.filename || '',
+      lineno: event.lineno || 0,
+      colno: event.colno || 0,
+      auto_captured: true
+    });
+  });
+
+  window.addEventListener('unhandledrejection', function(event) {
+    if (errorSent) return;
+    errorSent = true;
+    var reason = event.reason;
+    sendEvent('error', {
+      message: (reason instanceof Error) ? reason.message : String(reason),
+      type: 'unhandled_promise_rejection',
+      auto_captured: true
+    });
+  });
+
+  // --- Public API ---
+
+  window.playablesSDK = {
+    complete: function(score) {
+      sendEvent('game_ended', {
+        score: score,
+        completed: true
+      });
+    },
+
+    error: function(message) {
+      if (errorSent) return;
+      errorSent = true;
+      sendEvent('error', {
+        message: message || 'Unknown error',
+        auto_captured: false
+      });
+    },
+
+    sendEvent: function(eventName, payload) {
+      if (!eventName || typeof eventName !== 'string') return;
+      sendEvent(eventName, payload);
+    }
+  };
+
+  // Kick off rAF detection in case no game code calls rAF immediately
+  if (originalRAF) {
+    originalRAF.call(window, onFrame);
+  }
+})();</script>
+<script>window.Intl=window.Intl||{};Intl.t=function(s){return(Intl._locale&&Intl._locale[s])||s;};</script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Solar Quote | BAJA PRO-SERVICES</title>
@@ -29,6 +219,7 @@
         label { display: block; margin-bottom: 6px; font-size: 14px; font-weight: 600; color: var(--emerald-dark); }
         input, select { padding: 12px; margin-bottom: 18px; background: #fff; border: 1px solid #d1d5db; border-radius: 10px; font-size: 15px; color: var(--text-main); }
         .inputs-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; background: #f0fdf4; padding: 15px; border-radius: 12px; margin-bottom: 20px; }
+        .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
         .cert-card { background: #f9fafb; border: 1px solid #e5e7eb; padding: 12px; border-radius: 10px; margin-bottom: 10px; font-size: 13px; }
         .icon-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; margin: 25px 0; text-align: center; }
         .icon-item img { width: 45px; height: 45px; object-fit: contain; margin-bottom: 8px; }
@@ -69,10 +260,50 @@
         <input type="tel" id="telefono" required>
         <input type="text" id="direccion" required>
  
+        <span class="section-title" id="t-service"></span>
+        <div class="two-col">
+            <div>
+                <label id="l-tarifa"></label>
+                <select id="tarifaCFE">
+                    <optgroup label="Domésticas" id="og-dom">
+                        <option value="1">1 - Templado (<25°C)</option>
+                        <option value="1A">1A - ≥25°C</option>
+                        <option value="1B">1B - ≥28°C</option>
+                        <option value="1C">1C - ≥30°C (La Paz/Cabo)</option>
+                        <option value="1D">1D - ≥31°C</option>
+                        <option value="1E">1E - ≥32°C</option>
+                        <option value="1F">1F - ≥33°C (Hermosillo/Mexicali)</option>
+                        <option value="DAC">DAC - Doméstica Alto Consumo</option>
+                    </optgroup>
+                    <optgroup label="Comerciales" id="og-com">
+                        <option value="PDBT">PDBT - Pequeña Demanda <25kW</option>
+                        <option value="GDBT">GDBT - Gran Demanda BT</option>
+                        <option value="GDMTO">GDMTO - Media Tensión Ordinaria</option>
+                        <option value="GDMTH">GDMTH - Media Tensión Horaria</option>
+                    </optgroup>
+                    <optgroup label="Industriales/Agrícolas" id="og-ind">
+                        <option value="DIST">DIST - Subtransmisión</option>
+                        <option value="DIT">DIT - Transmisión</option>
+                        <option value="APBT">APBT - Alumbrado Público BT</option>
+                        <option value="RABT">RABT - Riego Agrícola BT</option>
+                    </optgroup>
+                </select>
+            </div>
+            <div>
+                <label id="l-fase"></label>
+                <select id="tipoFase">
+                    <option value="monofasico" id="opt-mono"></option>
+                    <option value="bifasico" id="opt-bi"></option>
+                    <option value="trifasico" id="opt-tri"></option>
+                </select>
+            </div>
+        </div>
+ 
         <span class="section-title" id="t-usage"></span>
+        <label id="l-periodo"></label>
         <select id="tipoTarifa" onchange="alternarInputs()">
-            <option value="bimestral" id="opt-bi"></option>
-            <option value="mensual" id="opt-me"></option>
+            <option value="bimestral" id="opt-bimestral"></option>
+            <option value="mensual" id="opt-mensual"></option>
         </select>
  
         <div id="gridBimestre" class="inputs-grid">
@@ -150,7 +381,7 @@
               <p style="font-size:20px; color:#dc2626; margin:0; font-weight:800;">$<span id="reciboActual">0</span>/mes</p>
               <p style="font-size:12px; color:#059669; margin:8px 0 0; font-weight:700;"><span id="t-withsolar"></span> $<span id="ahorroEstimado">0</span><span id="t-permonth"></span></p>
             </div>
-            <a id="btnWhatsAppBajaPro" href="#" target="_blank" style="display:inline-block; background:#25D366; color:#fff; font-weight:700; font-size:16px; padding:14px 28px; border-radius:8px; text-decoration:none; box-shadow:0 4px 12px rgba(0,0,0,0.15); text-transform:uppercase;" id="t-wabtn"></a>
+            <a id="btnWhatsAppBajaPro" href="#" target="_blank" style="display:inline-block; background:#25D366; color:#fff; font-weight:700; font-size:16px; padding:14px 28px; border-radius:8px; text-decoration:none; box-shadow:0 4px 12px rgba(0,0,0,0.15); text-transform:uppercase;"></a>
             <p style="font-size:11px; color:#666; margin:12px 0 0; line-height:1.4;" id="t-contact"></p>
           </div>
         </div>
@@ -194,9 +425,16 @@
         namePH: "Nombre completo",
         phonePH: "WhatsApp",
         addressPH: "Ubicación",
-        tUsage: "Consumo (kWh)",
-        optBi: "Residencial (Bimestral)",
-        optMe: "Comercial (Mensual)",
+        tService: "Datos del Servicio CFE",
+        lTarifa: "Tarifa CFE actual",
+        lFase: "Tipo de conexión",
+        optMono: "Monofásico (1 fase)",
+        optBi: "Bifásico (2 fases)",
+        optTri: "Trifásico (3 fases)",
+        tUsage: "Consumo Histórico",
+        lPeriodo: "Periodo de facturación",
+        optBimestral: "Residencial (Bimestral)",
+        optMensual: "Comercial (Mensual)",
         tCerts: "Certificaciones y Calidad",
         cert1: "Instalación de Sistemas Fotovoltaicos (PFVI).",
         cert2: "Supervisión de Instalaciones (IPV).",
@@ -223,7 +461,7 @@
         years: "AÑOS",
         waGreet: "Hola Baja Pro-Services, usé la calculadora:",
         waPeriod: (tipo) => tipo === 'bimestral' ? 'bimestral' : 'mensual',
-        waLines: (d) => `⚡ Consumo prom: ${d.kwh} kWh ${d.periodo}%0A💸 Recibo actual: $${d.recibo}/mes%0A💰 Ahorro con solar: $${d.recibo}/mes%0A🔋 ${d.sistNombre}%0A📋 ${d.paneles} paneles / Inversor ${d.inversor}%0A💵 Inversión: $${d.precio} Inst+IVA incl${d.suma}%0A%0AQuiero mi cotización formal gratis. Mi nombre es ${d.nombre}.`,
+        waLines: (d) => `⚡ Consumo prom: ${d.kwh} kWh ${d.periodo}%0A💸 Recibo actual: $${d.recibo}/mes%0A🔌 Tarifa CFE: ${d.tarifa} (${d.fase})%0A💰 Ahorro con solar: $${d.recibo}/mes%0A🔋 ${d.sistNombre}%0A📋 ${d.paneles} paneles / Inversor ${d.inversor}%0A💵 Inversión: $${d.precio} Inst+IVA incl${d.suma}%0A%0AQuiero mi cotización formal gratis. Mi nombre es ${d.nombre}.`,
         waSuma: "%0A🎟️ Presentaré mi cupón SUMA para 10% descuento",
         waNoSuma: "",
         waAlertNombre: "Por favor ingrese nombre y consumo.",
@@ -236,9 +474,16 @@
         namePH: "Full name",
         phonePH: "WhatsApp",
         addressPH: "Location",
-        tUsage: "Consumption (kWh)",
-        optBi: "Residential (Bi-monthly)",
-        optMe: "Commercial (Monthly)",
+        tService: "CFE Service Data",
+        lTarifa: "Current CFE Tariff",
+        lFase: "Connection Type",
+        optMono: "Single-phase (1 phase)",
+        optBi: "Split-phase (2 phases)",
+        optTri: "Three-phase (3 phases)",
+        tUsage: "Historical Consumption",
+        lPeriodo: "Billing period",
+        optBimestral: "Residential (Bi-monthly)",
+        optMensual: "Commercial (Monthly)",
         tCerts: "Certifications & Quality",
         cert1: "Photovoltaic System Installation (PFVI).",
         cert2: "Installation Supervision (IPV).",
@@ -265,7 +510,7 @@
         years: "YEARS",
         waGreet: "Hi Baja Pro-Services, I used the calculator:",
         waPeriod: (tipo) => tipo === 'bimestral' ? 'bi-monthly' : 'monthly',
-        waLines: (d) => `⚡ Avg consumption: ${d.kwh} kWh ${d.periodo}%0A💸 Current bill: $${d.recibo}/mo%0A💰 Savings with solar: $${d.recibo}/mo%0A🔋 ${d.sistNombre}%0A📋 ${d.paneles} panels / Inverter ${d.inversor}%0A💵 Investment: $${d.precio} Install+VAT incl${d.suma}%0A%0AI want my free formal quote. My name is ${d.nombre}.`,
+        waLines: (d) => `⚡ Avg consumption: ${d.kwh} kWh ${d.periodo}%0A💸 Current bill: $${d.recibo}/mo%0A🔌 CFE Tariff: ${d.tarifa} (${d.fase})%0A💰 Savings with solar: $${d.recibo}/mo%0A🔋 ${d.sistNombre}%0A📋 ${d.paneles} panels / Inverter ${d.inversor}%0A💵 Investment: $${d.precio} Install+VAT incl${d.suma}%0A%0AI want my free formal quote. My name is ${d.nombre}.`,
         waSuma: "%0A🎟️ I will present my SUMA coupon for 10% discount",
         waNoSuma: "",
         waAlertNombre: "Please enter your name and consumption.",
@@ -283,9 +528,16 @@
       document.getElementById('nombre').placeholder = t.namePH;
       document.getElementById('telefono').placeholder = t.phonePH;
       document.getElementById('direccion').placeholder = t.addressPH;
-      document.getElementById('t-usage').innerText = t.tUsage;
+      document.getElementById('t-service').innerText = t.tService;
+      document.getElementById('l-tarifa').innerText = t.lTarifa;
+      document.getElementById('l-fase').innerText = t.lFase;
+      document.getElementById('opt-mono').innerText = t.optMono;
       document.getElementById('opt-bi').innerText = t.optBi;
-      document.getElementById('opt-me').innerText = t.optMe;
+      document.getElementById('opt-tri').innerText = t.optTri;
+      document.getElementById('t-usage').innerText = t.tUsage;
+      document.getElementById('l-periodo').innerText = t.lPeriodo;
+      document.getElementById('opt-bimestral').innerText = t.optBimestral;
+      document.getElementById('opt-mensual').innerText = t.optMensual;
       document.getElementById('t-certs').innerText = t.tCerts;
       document.getElementById('cert1').innerText = t.cert1;
       document.getElementById('cert2').innerText = t.cert2;
@@ -417,11 +669,15 @@
       const nombre = document.getElementById('nombre').value || (currentLang === 'es' ? 'Cliente' : 'Customer');
       const periodo = t.waPeriod(tipo);
       const textoSuma = tieneSuma ? t.waSuma : t.waNoSuma;
+      const tarifaSeleccionada = document.getElementById('tarifaCFE').value;
+      const faseSeleccionada = document.getElementById('tipoFase').selectedOptions[0].text;
  
       const waData = {
         kwh: promedioKwhPeriodo,
         periodo,
         recibo: reciboSinSolar.toLocaleString('es-MX'),
+        tarifa: tarifaSeleccionada,
+        fase: faseSeleccionada,
         sistNombre: t.sysNombre(sistemaElegido),
         paneles: sistemaElegido.paneles,
         inversor: sistemaElegido.inversor,
@@ -434,7 +690,7 @@
       document.getElementById('btnWhatsAppBajaPro').href = `https://wa.me/5216122198325?text=${mensaje}`;
     }
  
-    document.querySelectorAll('.in-kwh,.in-kwh-m, #panelWatts, #tipoTarifa').forEach(el => {
+    document.querySelectorAll('.in-kwh,.in-kwh-m, #panelWatts, #tipoTarifa, #tarifaCFE, #tipoFase').forEach(el => {
       el.addEventListener('input', calcular);
       el.addEventListener('change', calcular);
     });
@@ -446,6 +702,8 @@
       const loc = document.getElementById('direccion').value;
       const panels = document.getElementById('panelCount').innerText;
       const watts = document.getElementById('panelWatts').value;
+      const tarifa = document.getElementById('tarifaCFE').value;
+      const fase = document.getElementById('tipoFase').value;
       const num = document.getElementById('waNumber').value;
       if (!nombre || panels === "0") {
         alert(t.alertMsg);
@@ -453,15 +711,20 @@
       }
       const msg = encodeURIComponent(
         currentLang === 'es'
-          ? `*COTIZACIÓN SOLAR - BAJA PRO-SERVICES*\nCliente: ${nombre}\nWhatsApp: ${tel}\nUbicación: ${loc}\nSugerencia: ${panels} Paneles de ${watts}W\nCálculo basado en 6.19 HSP (BCS)`
-          : `*SOLAR QUOTE - BAJA PRO-SERVICES*\nCustomer: ${nombre}\nWhatsApp: ${tel}\nLocation: ${loc}\nSuggested: ${panels} Panels of ${watts}W\nCalculation based on 6.19 HSP (BCS)`
+          ? `*COTIZACIÓN SOLAR - BAJA PRO-SERVICES*\nCliente: ${nombre}\nWhatsApp: ${tel}\nUbicación: ${loc}\nTarifa CFE: ${tarifa}\nFase: ${fase}\nSugerencia: ${panels} Paneles de ${watts}W\nCálculo basado en 6.19 HSP (BCS)`
+          : `*SOLAR QUOTE - BAJA PRO-SERVICES*\nCustomer: ${nombre}\nWhatsApp: ${tel}\nLocation: ${loc}\nCFE Tariff: ${tarifa}\nPhase: ${fase}\nSuggested: ${panels} Panels of ${watts}W\nCalculation based on 6.19 HSP (BCS)`
       );
       window.open(`https://wa.me/${num}?text=${msg}`, '_blank');
     }
  
     // Init
     applyLang('es');
-    document.addEventListener('DOMContentLoaded', () => { applyLang('es'); calcular(); });
+    document.addEventListener('DOMContentLoaded', () => { 
+        applyLang('es'); 
+        document.getElementById('tarifaCFE').value = '1C';
+        document.getElementById('tipoFase').value = 'bifasico';
+        calcular(); 
+    });
 </script>
 </body>
 </html>
