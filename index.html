@@ -1,730 +1,736 @@
 <index.html>
 <html lang="es">
 <head>
-<!-- Playables SDK -->
 <script>// Playables SDK v1.0.0
-// Game lifecycle bridge: rAF-based game-ready detection + event communication
 (function() {
   'use strict';
-
-  // Idempotency: skip if already initialized (e.g., server-side injection
-  // followed by client-side inject-javascript via the Bloks webview component).
   if (window.playablesSDK) return;
-
   var HANDLER_NAME = 'playablesGameEventHandler';
   var ANDROID_BRIDGE_NAME = '_MetaPlayablesBridge';
   var RAF_FRAME_THRESHOLD = 3;
-
   var gameReadySent = false;
   var firstInteractionSent = false;
   var errorSent = false;
   var frameCount = 0;
   var originalRAF = window.requestAnimationFrame;
-
-  // --- Transport Layer ---
-
-  function hasIOSBridge() {
-    return !!(window.webkit &&
-              window.webkit.messageHandlers &&
-              window.webkit.messageHandlers[HANDLER_NAME]);
-  }
-
-  function hasAndroidBridge() {
-    return !!(window[ANDROID_BRIDGE_NAME] &&
-              typeof window[ANDROID_BRIDGE_NAME].postEvent === 'function');
-  }
-
-  function isInIframe() {
-    return !!(window.parent && window.parent !== window);
-  }
-
+  function hasIOSBridge() { return !!(window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers[HANDLER_NAME]); }
+  function hasAndroidBridge() { return !!(window[ANDROID_BRIDGE_NAME] && typeof window[ANDROID_BRIDGE_NAME].postEvent === 'function'); }
+  function isInIframe() { return !!(window.parent && window.parent !== window); }
   function sendEvent(eventName, payload) {
-    var message = {
-      type: eventName,
-      payload: payload || {},
-      timestamp: Date.now()
-    };
-
-    if (hasIOSBridge()) {
-      try {
-        window.webkit.messageHandlers[HANDLER_NAME].postMessage(message);
-      } catch (e) { /* ignore */ }
-      return;
-    }
-
-    if (hasAndroidBridge()) {
-    try {
-      var p = payload || {};
-      p.__secureToken = window.__fbAndroidBridgeAuthToken || '';
-      window[ANDROID_BRIDGE_NAME].postEvent(
-        eventName,
-        JSON.stringify(p)
-      );
-    } catch (e) { /* ignore */ }
-    return;
+    var message = { type: eventName, payload: payload || {}, timestamp: Date.now() };
+    if (hasIOSBridge()) { try { window.webkit.messageHandlers[HANDLER_NAME].postMessage(message); } catch (e) {} return; }
+    if (hasAndroidBridge()) { try { var p = payload || {}; p.__secureToken = window.__fbAndroidBridgeAuthToken || ''; window[ANDROID_BRIDGE_NAME].postEvent(eventName, JSON.stringify(p)); } catch (e) {} return; }
+    if (isInIframe()) { try { window.parent.postMessage(message, '*'); } catch (e) {} return; }
   }
-
-    if (isInIframe()) {
-      try {
-        window.parent.postMessage(message, '*');
-      } catch (e) { /* ignore */ }
-      return;
-    }
-  }
-
-  // --- rAF Game-Ready Detection ---
-
-  function onFrame() {
-    if (gameReadySent) return;
-
-    frameCount++;
-    if (frameCount >= RAF_FRAME_THRESHOLD) {
-      gameReadySent = true;
-      sendEvent('game_ready', {
-        frame_count: frameCount,
-        detected_at: Date.now()
-      });
-      return;
-    }
-
-    originalRAF.call(window, onFrame);
-  }
-
+  function onFrame() { if (gameReadySent) return; frameCount++; if (frameCount >= RAF_FRAME_THRESHOLD) { gameReadySent = true; sendEvent('game_ready', { frame_count: frameCount, detected_at: Date.now() }); return; } originalRAF.call(window, onFrame); }
   if (originalRAF) {
     window.requestAnimationFrame = function(callback) {
-      if (!gameReadySent) {
-        return originalRAF.call(window, function(timestamp) {
-          frameCount++;
-          if (frameCount >= RAF_FRAME_THRESHOLD && !gameReadySent) {
-            gameReadySent = true;
-            sendEvent('game_ready', {
-              frame_count: frameCount,
-              detected_at: Date.now()
-            });
-          }
-          callback(timestamp);
-        });
-      }
+      if (!gameReadySent) { return originalRAF.call(window, function(timestamp) { frameCount++; if (frameCount >= RAF_FRAME_THRESHOLD && !gameReadySent) { gameReadySent = true; sendEvent('game_ready', { frame_count: frameCount, detected_at: Date.now() }); } callback(timestamp); }); }
       return originalRAF.call(window, callback);
     };
   }
-
-  // --- First User Interaction Detection ---
-
   function setupFirstInteractionDetection() {
     var events = ['touchstart', 'mousedown', 'keydown'];
-
-    function onFirstInteraction() {
-      if (firstInteractionSent) return;
-      firstInteractionSent = true;
-      sendEvent('user_interaction_start', null);
-
-      for (var i = 0; i < events.length; i++) {
-        document.removeEventListener(events[i], onFirstInteraction, true);
-      }
-    }
-
-    for (var i = 0; i < events.length; i++) {
-      document.addEventListener(events[i], onFirstInteraction, true);
-    }
+    function onFirstInteraction() { if (firstInteractionSent) return; firstInteractionSent = true; sendEvent('user_interaction_start', null); for (var i = 0; i < events.length; i++) { document.removeEventListener(events[i], onFirstInteraction, true); } }
+    for (var i = 0; i < events.length; i++) { document.addEventListener(events[i], onFirstInteraction, true); }
   }
-
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', setupFirstInteractionDetection);
-  } else {
-    setupFirstInteractionDetection();
-  }
-
-  // --- Auto Error Capture ---
-
-  window.addEventListener('error', function(event) {
-    if (errorSent) return;
-    errorSent = true;
-    sendEvent('error', {
-      message: event.message || 'Unknown error',
-      source: event.filename || '',
-      lineno: event.lineno || 0,
-      colno: event.colno || 0,
-      auto_captured: true
-    });
-  });
-
-  window.addEventListener('unhandledrejection', function(event) {
-    if (errorSent) return;
-    errorSent = true;
-    var reason = event.reason;
-    sendEvent('error', {
-      message: (reason instanceof Error) ? reason.message : String(reason),
-      type: 'unhandled_promise_rejection',
-      auto_captured: true
-    });
-  });
-
-  // --- Public API ---
-
+  if (document.readyState === 'loading') { document.addEventListener('DOMContentLoaded', setupFirstInteractionDetection); } else { setupFirstInteractionDetection(); }
+  window.addEventListener('error', function(event) { if (errorSent) return; errorSent = true; sendEvent('error', { message: event.message || 'Unknown error', source: event.filename || '', lineno: event.lineno || 0, colno: event.colno || 0, auto_captured: true }); });
+  window.addEventListener('unhandledrejection', function(event) { if (errorSent) return; errorSent = true; var reason = event.reason; sendEvent('error', { message: (reason instanceof Error) ? reason.message : String(reason), type: 'unhandled_promise_rejection', auto_captured: true }); });
   window.playablesSDK = {
-    complete: function(score) {
-      sendEvent('game_ended', {
-        score: score,
-        completed: true
-      });
-    },
-
-    error: function(message) {
-      if (errorSent) return;
-      errorSent = true;
-      sendEvent('error', {
-        message: message || 'Unknown error',
-        auto_captured: false
-      });
-    },
-
-    sendEvent: function(eventName, payload) {
-      if (!eventName || typeof eventName !== 'string') return;
-      sendEvent(eventName, payload);
-    }
+    complete: function(score) { sendEvent('game_ended', { score: score, completed: true }); },
+    error: function(message) { if (errorSent) return; errorSent = true; sendEvent('error', { message: message || 'Unknown error', auto_captured: false }); },
+    sendEvent: function(eventName, payload) { if (!eventName || typeof eventName !== 'string') return; sendEvent(eventName, payload); }
   };
-
-  // Kick off rAF detection in case no game code calls rAF immediately
-  if (originalRAF) {
-    originalRAF.call(window, onFrame);
-  }
+  if (originalRAF) { originalRAF.call(window, onFrame); }
 })();</script>
 <script>window.Intl=window.Intl||{};Intl.t=function(s){return(Intl._locale&&Intl._locale[s])||s;};</script>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Solar Quote | BAJA PRO-SERVICES</title>
-    <style>
-        :root {
-            --emerald-bg: #d1fae5;
-            --emerald-primary: #10b981;
-            --emerald-dark: #064e3b;
-            --emerald-accent: #059669;
-            --white: #ffffff;
-            --text-main: #1f2937;
-        }
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: var(--emerald-bg); margin: 0; padding: 0; color: var(--text-main); }
-        .top-bar { background-color: var(--emerald-dark); color: white; text-align: center; padding: 8px 10px; font-size: 11px; font-weight: 600; letter-spacing: 0.5px; text-transform: uppercase; }
-        .hero-container { width: 100%; max-width: 800px; margin: 0 auto; position: relative; }
-        .hero-image { width: 100%; height: auto; display: block; border-bottom: 4px solid var(--emerald-primary); }
-        .container { max-width: 600px; margin: 20px auto 50px; background: var(--white); padding: 35px; border-radius: 20px; box-shadow: 0 15px 35px rgba(6, 78, 59, 0.1); position: relative; z-index: 10; }
-        .lang-switch { display: flex; justify-content: flex-end; gap: 10px; margin-bottom: 15px; }
-        .lang-btn { background: transparent; border: 1px solid var(--emerald-primary); color: var(--emerald-primary); padding: 5px 15px; border-radius: 20px; cursor: pointer; font-weight: bold; font-size: 12px; transition: all 0.2s; }
-        .lang-btn.active { background: var(--emerald-primary); color: white; }
-        header { text-align: center; margin-bottom: 30px; border-bottom: 2px solid #f0fdf4; padding-bottom: 15px; }
-        header h1 { margin: 0; color: var(--emerald-dark); font-size: 26px; }
-        header p { margin: 5px 0 0; font-size: 13px; color: var(--emerald-primary); font-weight: 700; }
-        .section-title { font-weight: 700; margin: 25px 0 12px; display: block; border-left: 4px solid var(--emerald-primary); padding-left: 12px; color: var(--emerald-dark); font-size: 15px; text-transform: uppercase; }
-        input, select, label { width: 100%; box-sizing: border-box; }
-        label { display: block; margin-bottom: 6px; font-size: 14px; font-weight: 600; color: var(--emerald-dark); }
-        input, select { padding: 12px; margin-bottom: 18px; background: #fff; border: 1px solid #d1d5db; border-radius: 10px; font-size: 15px; color: var(--text-main); }
-        .inputs-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; background: #f0fdf4; padding: 15px; border-radius: 12px; margin-bottom: 20px; }
-        .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-        .cert-card { background: #f9fafb; border: 1px solid #e5e7eb; padding: 12px; border-radius: 10px; margin-bottom: 10px; font-size: 13px; }
-        .icon-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; margin: 25px 0; text-align: center; }
-        .icon-item img { width: 45px; height: 45px; object-fit: contain; margin-bottom: 8px; }
-        .icon-item span { display: block; font-size: 10px; font-weight: 800; color: var(--emerald-dark); line-height: 1.2; }
-        .result-box { background: var(--emerald-dark); color: white; padding: 25px; border-radius: 15px; text-align: center; margin: 25px 0; border-bottom: 5px solid var(--emerald-primary); }
-        .result-value { font-size: 38px; font-weight: 800; color: var(--emerald-primary); margin: 10px 0; }
-        .panel-selector { background: rgba(255,255,255,0.1); padding: 10px; border-radius: 8px; margin-top: 15px; border: 1px solid var(--emerald-primary); }
-        .panel-selector select { margin-bottom: 0; background: var(--emerald-dark); color: white; border: none; font-weight: bold; text-align: center; }
-        button { width: 100%; background-color: var(--emerald-primary); color: white; padding: 18px; border: none; border-radius: 12px; font-size: 16px; font-weight: 700; cursor: pointer; text-transform: uppercase; }
-        .hidden { display: none; }
-        .checkbox-suma { display: flex; align-items: center; gap: 8px; margin: 12px 0; font-size: 13px; }
-        .checkbox-suma input { width: auto; margin: 0; }
-        .precio-tachado { text-decoration: line-through; color: #9ca3af; font-size: 12px; }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Solar Quote | BAJA PRO-SERVICES</title>
+<style>
+:root {
+  --emerald-bg: #d1fae5;
+  --emerald-primary: #10b981;
+  --emerald-dark: #064e3b;
+  --emerald-accent: #059669;
+  --white: #ffffff;
+  --text-main: #1f2937;
+}
+body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: var(--emerald-bg); margin: 0; padding: 0; color: var(--text-main); }
+.top-bar { background-color: var(--emerald-dark); color: white; text-align: center; padding: 8px 10px; font-size: 11px; font-weight: 600; letter-spacing: 0.5px; text-transform: uppercase; }
+.hero-container { width: 100%; max-width: 800px; margin: 0 auto; position: relative; }
+.hero-image { width: 100%; height: auto; display: block; border-bottom: 4px solid var(--emerald-primary); }
+.container { max-width: 600px; margin: 20px auto 50px; background: var(--white); padding: 35px; border-radius: 20px; box-shadow: 0 15px 35px rgba(6,78,59,0.1); position: relative; z-index: 10; }
+.lang-switch { display: flex; justify-content: flex-end; gap: 10px; margin-bottom: 15px; }
+.lang-btn { background: transparent; border: 1px solid var(--emerald-primary); color: var(--emerald-primary); padding: 5px 15px; border-radius: 20px; cursor: pointer; font-weight: bold; font-size: 12px; transition: all 0.2s; }
+.lang-btn.active { background: var(--emerald-primary); color: white; }
+header { text-align: center; margin-bottom: 30px; border-bottom: 2px solid #f0fdf4; padding-bottom: 15px; }
+header h1 { margin: 0; color: var(--emerald-dark); font-size: 26px; }
+header p { margin: 5px 0 0; font-size: 13px; color: var(--emerald-primary); font-weight: 700; }
+.section-title { font-weight: 700; margin: 25px 0 12px; display: block; border-left: 4px solid var(--emerald-primary); padding-left: 12px; color: var(--emerald-dark); font-size: 15px; text-transform: uppercase; }
+input, select, label { width: 100%; box-sizing: border-box; }
+label { display: block; margin-bottom: 6px; font-size: 14px; font-weight: 600; color: var(--emerald-dark); }
+input, select { padding: 12px; margin-bottom: 18px; background: #fff; border: 1px solid #d1d5db; border-radius: 10px; font-size: 15px; color: var(--text-main); }
+.inputs-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; background: #f0fdf4; padding: 15px; border-radius: 12px; margin-bottom: 20px; }
+.two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.three-col { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
+.cert-card { background: #f9fafb; border: 1px solid #e5e7eb; padding: 12px; border-radius: 10px; margin-bottom: 10px; font-size: 13px; }
+.icon-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; margin: 25px 0; text-align: center; }
+.icon-item img { width: 45px; height: 45px; object-fit: contain; margin-bottom: 8px; }
+.icon-item span { display: block; font-size: 10px; font-weight: 800; color: var(--emerald-dark); line-height: 1.2; }
+.result-box { background: var(--emerald-dark); color: white; padding: 25px; border-radius: 15px; text-align: center; margin: 25px 0; border-bottom: 5px solid var(--emerald-primary); }
+.result-value { font-size: 38px; font-weight: 800; color: var(--emerald-primary); margin: 10px 0; }
+.panel-selector { background: rgba(255,255,255,0.1); padding: 10px; border-radius: 8px; margin-top: 15px; border: 1px solid var(--emerald-primary); }
+.panel-selector select { margin-bottom: 0; background: var(--emerald-dark); color: white; border: none; font-weight: bold; text-align: center; }
+.inverter-info-box { background: rgba(16,185,129,0.15); border: 1px solid var(--emerald-primary); border-radius: 10px; padding: 14px; margin-top: 14px; font-size: 12px; color: #d1fae5; text-align: left; line-height: 1.6; }
+.inverter-info-box strong { color: #6ee7b7; display: block; font-size: 13px; margin-bottom: 4px; }
+button { width: 100%; background-color: var(--emerald-primary); color: white; padding: 18px; border: none; border-radius: 12px; font-size: 16px; font-weight: 700; cursor: pointer; text-transform: uppercase; }
+.hidden { display: none; }
+.checkbox-suma { display: flex; align-items: center; gap: 8px; margin: 12px 0; font-size: 13px; }
+.checkbox-suma input { width: auto; margin: 0; }
+.precio-tachado { text-decoration: line-through; color: #9ca3af; font-size: 12px; }
+.alert-phase { background: #fef3c7; border: 1px solid #f59e0b; border-radius: 8px; padding: 10px 14px; font-size: 12px; color: #92400e; margin-bottom: 14px; display: none; font-weight: 600; }
+.kw-override-box { background: #f0fdf4; border: 1px solid #6ee7b7; border-radius: 10px; padding: 14px; margin-bottom: 18px; }
+.kw-override-box label { color: var(--emerald-dark); font-size: 13px; }
+.kw-override-box input { padding: 8px 12px; font-size: 14px; margin-bottom: 0; }
+.inverter-type-toggle { display: flex; gap: 10px; margin-bottom: 18px; }
+.inv-type-btn { flex: 1; padding: 10px; border: 2px solid #d1d5db; border-radius: 10px; background: white; color: var(--text-main); font-weight: 700; font-size: 13px; cursor: pointer; text-align: center; transition: all 0.2s; }
+.inv-type-btn.active { border-color: var(--emerald-primary); background: #f0fdf4; color: var(--emerald-dark); }
+</style>
 </head>
 <body>
- 
+
 <div class="top-bar">CABO SAN LUCAS • SAN JOSÉ DEL CABO • LA PAZ, BCS, MX</div>
- 
+
 <div class="hero-container">
-    <img src="Hero.png" alt="Hero" class="hero-image">
+  <img src="Hero.png" alt="Hero" class="hero-image">
 </div>
- 
+
 <div class="container">
-    <div class="lang-switch">
-        <button id="btn-es" class="lang-btn active" onclick="changeLang('es')">ES</button>
-        <button id="btn-en" class="lang-btn" onclick="changeLang('en')">EN</button>
+  <div class="lang-switch">
+    <button id="btn-es" class="lang-btn active" onclick="changeLang('es')">ES</button>
+    <button id="btn-en" class="lang-btn" onclick="changeLang('en')">EN</button>
+  </div>
+
+  <header>
+    <h1>BAJA PRO-SERVICES</h1>
+    <p id="tagline"></p>
+  </header>
+
+  <form id="solarForm">
+    <span class="section-title" id="t-client"></span>
+    <input type="text" id="nombre" required>
+    <input type="tel" id="telefono" required>
+    <input type="text" id="direccion" required>
+
+    <span class="section-title" id="t-service"></span>
+    <div class="two-col">
+      <div>
+        <label id="l-tarifa"></label>
+        <select id="tarifaCFE" onchange="onTarifaChange()">
+          <optgroup label="Domésticas">
+            <option value="1">1 - Templado (&lt;25°C)</option>
+            <option value="1A">1A - ≥25°C</option>
+            <option value="1B">1B - ≥28°C</option>
+            <option value="1C">1C - ≥30°C (La Paz/Cabo)</option>
+            <option value="1D">1D - ≥31°C</option>
+            <option value="1E">1E - ≥32°C</option>
+            <option value="1F">1F - ≥33°C (Hermosillo/Mexicali)</option>
+            <option value="DAC">DAC - Alto Consumo</option>
+          </optgroup>
+          <optgroup label="Comerciales">
+            <option value="PDBT">PDBT - Pequeña Demanda &lt;25kW</option>
+            <option value="GDBT">GDBT - Gran Demanda BT</option>
+            <option value="GDMTO">GDMTO - Media Tensión Ordinaria</option>
+            <option value="GDMTH">GDMTH - Media Tensión Horaria</option>
+          </optgroup>
+          <optgroup label="Industriales/Agrícolas">
+            <option value="DIST">DIST - Subtransmisión</option>
+            <option value="DIT">DIT - Transmisión</option>
+            <option value="APBT">APBT - Alumbrado Público BT</option>
+            <option value="RABT">RABT - Riego Agrícola BT</option>
+          </optgroup>
+        </select>
+      </div>
+      <div>
+        <label id="l-fase"></label>
+        <select id="tipoFase" onchange="calcular()">
+          <option value="monofasico" id="opt-mono"></option>
+          <option value="bifasico" id="opt-bi"></option>
+          <option value="trifasico" id="opt-tri"></option>
+        </select>
+      </div>
     </div>
- 
-    <header>
-        <h1>BAJA PRO-SERVICES</h1>
-        <p id="tagline"></p>
-    </header>
- 
-    <form id="solarForm">
-        <span class="section-title" id="t-client"></span>
-        <input type="text" id="nombre" required>
-        <input type="tel" id="telefono" required>
-        <input type="text" id="direccion" required>
- 
-        <span class="section-title" id="t-service"></span>
-        <div class="two-col">
-            <div>
-                <label id="l-tarifa"></label>
-                <select id="tarifaCFE">
-                    <optgroup label="Domésticas" id="og-dom">
-                        <option value="1">1 - Templado (<25°C)</option>
-                        <option value="1A">1A - ≥25°C</option>
-                        <option value="1B">1B - ≥28°C</option>
-                        <option value="1C">1C - ≥30°C (La Paz/Cabo)</option>
-                        <option value="1D">1D - ≥31°C</option>
-                        <option value="1E">1E - ≥32°C</option>
-                        <option value="1F">1F - ≥33°C (Hermosillo/Mexicali)</option>
-                        <option value="DAC">DAC - Doméstica Alto Consumo</option>
-                    </optgroup>
-                    <optgroup label="Comerciales" id="og-com">
-                        <option value="PDBT">PDBT - Pequeña Demanda <25kW</option>
-                        <option value="GDBT">GDBT - Gran Demanda BT</option>
-                        <option value="GDMTO">GDMTO - Media Tensión Ordinaria</option>
-                        <option value="GDMTH">GDMTH - Media Tensión Horaria</option>
-                    </optgroup>
-                    <optgroup label="Industriales/Agrícolas" id="og-ind">
-                        <option value="DIST">DIST - Subtransmisión</option>
-                        <option value="DIT">DIT - Transmisión</option>
-                        <option value="APBT">APBT - Alumbrado Público BT</option>
-                        <option value="RABT">RABT - Riego Agrícola BT</option>
-                    </optgroup>
-                </select>
-            </div>
-            <div>
-                <label id="l-fase"></label>
-                <select id="tipoFase">
-                    <option value="monofasico" id="opt-mono"></option>
-                    <option value="bifasico" id="opt-bi"></option>
-                    <option value="trifasico" id="opt-tri"></option>
-                </select>
-            </div>
+
+    <div class="alert-phase" id="alertPhase"></div>
+
+    <span class="section-title" id="t-usage"></span>
+    <label id="l-periodo"></label>
+    <select id="tipoTarifa" onchange="alternarInputs()">
+      <option value="bimestral" id="opt-bimestral"></option>
+      <option value="mensual" id="opt-mensual"></option>
+    </select>
+
+    <div id="gridBimestre" class="inputs-grid">
+      <div><label>B1</label><input type="number" class="in-kwh" placeholder="0"></div>
+      <div><label>B2</label><input type="number" class="in-kwh" placeholder="0"></div>
+      <div><label>B3</label><input type="number" class="in-kwh" placeholder="0"></div>
+      <div><label>B4</label><input type="number" class="in-kwh" placeholder="0"></div>
+      <div><label>B5</label><input type="number" class="in-kwh" placeholder="0"></div>
+      <div><label>B6</label><input type="number" class="in-kwh" placeholder="0"></div>
+    </div>
+
+    <div id="gridMes" class="inputs-grid hidden">
+      <div><label>1</label><input type="number" class="in-kwh-m" placeholder="0"></div>
+      <div><label>2</label><input type="number" class="in-kwh-m" placeholder="0"></div>
+      <div><label>3</label><input type="number" class="in-kwh-m" placeholder="0"></div>
+      <div><label>4</label><input type="number" class="in-kwh-m" placeholder="0"></div>
+      <div><label>5</label><input type="number" class="in-kwh-m" placeholder="0"></div>
+      <div><label>6</label><input type="number" class="in-kwh-m" placeholder="0"></div>
+      <div><label>7</label><input type="number" class="in-kwh-m" placeholder="0"></div>
+      <div><label>8</label><input type="number" class="in-kwh-m" placeholder="0"></div>
+      <div><label>9</label><input type="number" class="in-kwh-m" placeholder="0"></div>
+      <div><label>10</label><input type="number" class="in-kwh-m" placeholder="0"></div>
+      <div><label>11</label><input type="number" class="in-kwh-m" placeholder="0"></div>
+      <div><label>12</label><input type="number" class="in-kwh-m" placeholder="0"></div>
+    </div>
+
+    <span class="section-title" id="t-certs"></span>
+    <div class="cert-card"><strong>EC0586.01:</strong> <span id="cert1"></span></div>
+    <div class="cert-card"><strong>EC1181:</strong> <span id="cert2"></span></div>
+
+    <div class="icon-grid">
+      <div class="icon-item"><img src="110Ah.png" alt="110Ah"><span>110Ah</span></div>
+      <div class="icon-item"><img src="6000ciclos.png" alt="6000"><span>6000 <span class="t-cycles"></span></span></div>
+      <div class="icon-item"><img src="wifi.png" alt="Wifi"><span>WIFI SMART</span></div>
+      <div class="icon-item"><img src="ulcert.png" alt="UL"><span>UL CERTIFIED</span></div>
+      <div class="icon-item"><img src="compatible-bate.png" alt="Battery"><span>BATTERY READY</span></div>
+      <div class="icon-item"><img src="10aosdegarantia.png" alt="Warranty"><span>10 <span class="t-years"></span></span></div>
+      <div class="icon-item"><img src="optimizada-energia-solar.png" alt="Solar"><span>SOLAR OPT</span></div>
+      <div class="icon-item"><img src="heavy-duty.png" alt="HD"><span>HEAVY DUTY</span></div>
+      <div class="icon-item"><img src="descarga.png" alt="Deep"><span>DEEP DISCHARGE</span></div>
+    </div>
+
+    <!-- KW OVERRIDE + INVERTER TYPE CONTROLS -->
+    <div class="kw-override-box">
+      <div class="three-col">
+        <div>
+          <label id="l-kwextra"></label>
+          <input type="number" id="kwAdicional" min="0" max="500" value="0" placeholder="0" oninput="calcular()">
         </div>
- 
-        <span class="section-title" id="t-usage"></span>
-        <label id="l-periodo"></label>
-        <select id="tipoTarifa" onchange="alternarInputs()">
-            <option value="bimestral" id="opt-bimestral"></option>
-            <option value="mensual" id="opt-mensual"></option>
-        </select>
- 
-        <div id="gridBimestre" class="inputs-grid">
-            <div><label>B1</label><input type="number" class="in-kwh" placeholder="0"></div>
-            <div><label>B2</label><input type="number" class="in-kwh" placeholder="0"></div>
-            <div><label>B3</label><input type="number" class="in-kwh" placeholder="0"></div>
-            <div><label>B4</label><input type="number" class="in-kwh" placeholder="0"></div>
-            <div><label>B5</label><input type="number" class="in-kwh" placeholder="0"></div>
-            <div><label>B6</label><input type="number" class="in-kwh" placeholder="0"></div>
+        <div>
+          <label id="l-panelw"></label>
+          <select id="panelWatts" onchange="calcular()">
+            <option value="550" id="opt-550"></option>
+            <option value="580" id="opt-580"></option>
+            <option value="620" id="opt-620"></option>
+          </select>
         </div>
- 
-        <div id="gridMes" class="inputs-grid hidden">
-            <div><label>1</label><input type="number" class="in-kwh-m" placeholder="0"></div>
-            <div><label>2</label><input type="number" class="in-kwh-m" placeholder="0"></div>
-            <div><label>3</label><input type="number" class="in-kwh-m" placeholder="0"></div>
-            <div><label>4</label><input type="number" class="in-kwh-m" placeholder="0"></div>
-            <div><label>5</label><input type="number" class="in-kwh-m" placeholder="0"></div>
-            <div><label>6</label><input type="number" class="in-kwh-m" placeholder="0"></div>
-            <div><label>7</label><input type="number" class="in-kwh-m" placeholder="0"></div>
-            <div><label>8</label><input type="number" class="in-kwh-m" placeholder="0"></div>
-            <div><label>9</label><input type="number" class="in-kwh-m" placeholder="0"></div>
-            <div><label>10</label><input type="number" class="in-kwh-m" placeholder="0"></div>
-            <div><label>11</label><input type="number" class="in-kwh-m" placeholder="0"></div>
-            <div><label>12</label><input type="number" class="in-kwh-m" placeholder="0"></div>
+        <div>
+          <label id="l-invtype"></label>
+          <select id="tipoInversor" onchange="calcular()">
+            <option value="estandar" id="opt-estandar"></option>
+            <option value="hibrido" id="opt-hibrido"></option>
+          </select>
         </div>
- 
-        <span class="section-title" id="t-certs"></span>
-        <div class="cert-card"><strong>EC0586.01:</strong> <span id="cert1"></span></div>
-        <div class="cert-card"><strong>EC1181:</strong> <span id="cert2"></span></div>
- 
-        <div class="icon-grid">
-            <div class="icon-item"><img src="110Ah.png" alt="110Ah"><span>110Ah</span></div>
-            <div class="icon-item"><img src="6000ciclos.png" alt="6000"><span>6000 <span class="t-cycles"></span></span></div>
-            <div class="icon-item"><img src="wifi.png" alt="Wifi"><span>WIFI SMART</span></div>
-            <div class="icon-item"><img src="ulcert.png" alt="UL"><span>UL CERTIFIED</span></div>
-            <div class="icon-item"><img src="compatible-bate.png" alt="Battery"><span>BATTERY READY</span></div>
-            <div class="icon-item"><img src="10aosdegarantia.png" alt="Warranty"><span>10 <span class="t-years"></span></span></div>
-            <div class="icon-item"><img src="optimizada-energia-solar.png" alt="Solar"><span>SOLAR OPT</span></div>
-            <div class="icon-item"><img src="heavy-duty.png" alt="HD"><span>HEAVY DUTY</span></div>
-            <div class="icon-item"><img src="descarga.png" alt="Deep"><span>DEEP DISCHARGE</span></div>
+      </div>
+    </div>
+
+    <!-- RESULT BOX -->
+    <div class="result-box">
+      <div id="t-result" style="font-size:12px; font-weight:700; letter-spacing:1px; opacity:0.8;"></div>
+      <div class="result-value"><span id="panelCount">0</span> <span id="t-panels"></span></div>
+      <div style="font-size:13px; opacity:0.85; margin-bottom:6px;" id="sistemaKwLabel">0 kW</div>
+      <div class="inverter-info-box" id="inverterInfoBox">
+        <strong id="inverterInfoTitle"></strong>
+        <span id="inverterInfoDetail"></span>
+      </div>
+      <div style="font-size: 9px; opacity: 0.8; font-weight: bold; margin-top: 10px; letter-spacing: 1px;">ZONA BCS | 6.19 HSP | EFF 85%</div>
+    </div>
+
+    <!-- WHATSAPP LEAD SECTION -->
+    <div id="whatsappLeadSection" style="display:none; text-align:center; margin-top:24px;">
+      <div style="background:#f0fdf4; padding:20px; border-radius:12px; border:2px solid #10b981;">
+        <p style="font-size:16px; color:#064e3b; margin:0 0 4px; font-weight:700;" id="t-yourSystem"></p>
+        <p id="descripcionSistema" style="font-size:13px; color:#059669; margin:0 0 12px; font-weight:600;">Cargando...</p>
+        <p style="font-size:13px; color:#064e3b; margin:0 0 8px;">
+          <strong><span id="sistemaRecomendado">0</span>kW</strong> |
+          <span id="precioContainer"><strong>$<span id="precioSistema">0</span></strong></span>
+          <span id="t-instiva"></span>
+        </p>
+
+        <div class="checkbox-suma">
+          <input type="checkbox" id="cuponSuma" onchange="actualizarBotonWhatsApp()">
+          <label for="cuponSuma" style="margin:0; font-weight:600; color:#064e3b; cursor:pointer;" id="t-sumacoupon"></label>
         </div>
- 
-        <div class="result-box">
-            <div id="t-result"></div>
-            <div class="result-value"><span id="panelCount">0</span> <span id="t-panels"></span></div>
-            <div class="panel-selector">
-                <label style="color: white; font-size: 10px; margin-bottom: 4px;" id="t-paneltype"></label>
-                <select id="panelWatts" onchange="calcular()">
-                    <option value="550" id="opt-550"></option>
-                    <option value="580" id="opt-580"></option>
-                    <option value="620" id="opt-620"></option>
-                </select>
-            </div>
-            <div style="font-size: 9px; opacity: 0.8; font-weight: bold; margin-top: 10px; letter-spacing: 1px;">ZONA BCS | 6.19 HSP | EFF 85%</div>
+
+        <div style="background:#fff; padding:10px; border-radius:8px; margin:12px 0;">
+          <p style="font-size:12px; color:#666; margin:0 0 4px;" id="t-currentbill"></p>
+          <p style="font-size:20px; color:#dc2626; margin:0; font-weight:800;">$<span id="reciboActual">0</span>/mes</p>
+          <p style="font-size:12px; color:#059669; margin:8px 0 0; font-weight:700;"><span id="t-withsolar"></span> $<span id="ahorroEstimado">0</span><span id="t-permonth"></span></p>
         </div>
- 
-        <div id="whatsappLeadSection" style="display:none; text-align:center; margin-top:24px;">
-          <div style="background:#f0fdf4; padding:20px; border-radius:12px; border:2px solid #10b981;">
-            <p style="font-size:16px; color:#064e3b; margin:0 0 4px; font-weight:700;" id="t-yourSystem"></p>
-            <p id="descripcionSistema" style="font-size:13px; color:#059669; margin:0 0 12px; font-weight:600;">Cargando...</p>
-            <p style="font-size:13px; color:#064e3b; margin:0 0 8px;">
-              <strong><span id="sistemaRecomendado">0</span>kW</strong> |
-              <span id="precioContainer">
-                <strong>$<span id="precioSistema">0</span></strong>
-              </span> <span id="t-instiva"></span>
-            </p>
- 
-            <div class="checkbox-suma">
-              <input type="checkbox" id="cuponSuma" onchange="actualizarBotonWhatsApp()">
-              <label for="cuponSuma" style="margin:0; font-weight:600; color:#064e3b; cursor:pointer;" id="t-sumacoupon"></label>
-            </div>
- 
-            <div style="background:#fff; padding:10px; border-radius:8px; margin:12px 0;">
-              <p style="font-size:12px; color:#666; margin:0 0 4px;" id="t-currentbill"></p>
-              <p style="font-size:20px; color:#dc2626; margin:0; font-weight:800;">$<span id="reciboActual">0</span>/mes</p>
-              <p style="font-size:12px; color:#059669; margin:8px 0 0; font-weight:700;"><span id="t-withsolar"></span> $<span id="ahorroEstimado">0</span><span id="t-permonth"></span></p>
-            </div>
-            <a id="btnWhatsAppBajaPro" href="#" target="_blank" style="display:inline-block; background:#25D366; color:#fff; font-weight:700; font-size:16px; padding:14px 28px; border-radius:8px; text-decoration:none; box-shadow:0 4px 12px rgba(0,0,0,0.15); text-transform:uppercase;"></a>
-            <p style="font-size:11px; color:#666; margin:12px 0 0; line-height:1.4;" id="t-contact"></p>
-          </div>
-        </div>
- 
-        <label id="l-dept"></label>
-        <select id="waNumber">
-            <option value="5216122198325" id="opt-sales"></option>
-            <option value="5216121673200" id="opt-tech"></option>
-        </select>
- 
-        <button type="button" onclick="enviarWA()" id="btn-wa"></button>
-    </form>
+        <a id="btnWhatsAppBajaPro" href="#" target="_blank" style="display:inline-block; background:#25D366; color:#fff; font-weight:700; font-size:16px; padding:14px 28px; border-radius:8px; text-decoration:none; box-shadow:0 4px 12px rgba(0,0,0,0.15); text-transform:uppercase;"></a>
+        <p style="font-size:11px; color:#666; margin:12px 0 0; line-height:1.4;" id="t-contact"></p>
+      </div>
+    </div>
+
+    <label id="l-dept" style="margin-top:20px;"></label>
+    <select id="waNumber">
+      <option value="5216122198325" id="opt-sales"></option>
+      <option value="5216121673200" id="opt-tech"></option>
+    </select>
+
+    <button type="button" onclick="enviarWA()" id="btn-wa"></button>
+  </form>
 </div>
- 
+
 <script>
-    const HSP = 6.19;
-    const EFFICIENCY = 0.85;
-    const DESCUENTO_SUMA = 0.10;
- 
-    const TARIFAS_CFE_2026 = {
-      basico: { limite: 150, precio: 1.04 },
-      intermedio: { limite: 130, precio: 1.27 },
-      excedente: { precio: 3.73 },
-      dac: { umbral: 500, precio: 6.75 },
-      iva: 0.16
+const HSP = 6.19;
+const EFFICIENCY = 0.85;
+const DESCUENTO_SUMA = 0.10;
+const PRECIO_POR_KW = 19066; // MXN por kW instalado
+
+// ─── CATÁLOGO DE INVERSORES ─────────────────────────────────────────────────
+// monofasico: hasta 11.4kW; trifasico: 3kW en adelante
+const CATALOGO_INVERSORES = {
+  monofasico: {
+    estandar: [
+      { min:0,   max:3.6,  kw:3.6,  modelo:"Growatt / SMA / GOODWE / SOLIS 3-3.6kW Monofásico" },
+      { min:3.6, max:5,    kw:5,    modelo:"Growatt / SMA / GOODWE / SOLIS 4-5kW Monofásico" },
+      { min:5,   max:8,    kw:8,    modelo:"Growatt / SMA / GOODWE / SOLIS 6-8kW Monofásico" },
+      { min:8,   max:11.4, kw:11.4, modelo:"Growatt / SMA / GOODWE / SOLIS 10-11.4kW Monofásico" }
+    ],
+    hibrido: [
+      { min:0,   max:3.6,  kw:3.6,  modelo:"Solis S6-EH1P 3kW Híbrido Monofásico" },
+      { min:3.6, max:5,    kw:5,    modelo:"Solis S6-EH1P 5kW Híbrido Monofásico" },
+      { min:5,   max:8,    kw:8,    modelo:"Solis S6-EH1P 8kW Híbrido Monofásico" },
+      { min:8,   max:11.4, kw:10,   modelo:"Solis S6-EH1P 10kW Híbrido Monofásico" }
+    ]
+  },
+  trifasico: {
+    estandar: [
+      { min:0,   max:6,   kw:6,   modelo:"Growatt / SMA / GOODWE / SOLIS 3-6kW Trifásico" },
+      { min:6,   max:10,  kw:10,  modelo:"Growatt / SMA / GOODWE / SOLIS / Sunny Tripower 8-10kW Trifásico" },
+      { min:10,  max:25,  kw:25,  modelo:"Sunny Tripower X / Growatt / SMA 12-25kW Trifásico" },
+      { min:25,  max:40,  kw:40,  modelo:"Growatt MAX / SMA / GOODWE 30-40kW Trifásico" },
+      { min:40,  max:60,  kw:60,  modelo:"Growatt MAX / SMA / GOODWE / Sunny Tripower CORE1 50-60kW Trifásico" },
+      { min:60,  max:100, kw:100, modelo:"Growatt MAX / SMA / GOODWE 75-100kW Trifásico" }
+    ],
+    hibrido: [
+      { min:0,   max:6,   kw:5,   modelo:"GOODWE / SMA Storage 5kW Híbrido Trifásico" },
+      { min:6,   max:10,  kw:10,  modelo:"GOODWE / SMA Storage 10kW Híbrido Trifásico" },
+      { min:10,  max:25,  kw:25,  modelo:"GOODWE / SMA Storage 25kW Híbrido Trifásico" }
+    ]
+  }
+};
+
+// Tarifas que OBLIGAN trifásico
+const TARIFAS_TRIFASICO = ['GDBT','GDMTO','GDMTH','DIST','DIT','APBT','RABT'];
+// Tarifas comerciales/industriales
+const TARIFAS_COMERCIALES = ['PDBT','GDBT','GDMTO','GDMTH','DIST','DIT','APBT','RABT'];
+
+const TARIFAS_CFE_2026 = {
+  basico:     { limite: 150, precio: 1.04 },
+  intermedio: { limite: 130, precio: 1.27 },
+  excedente:  { precio: 3.73 },
+  dac:        { umbral: 500, precio: 6.75 },
+  iva: 0.16
+};
+
+// ─── LÓGICA DE DISEÑO DE SISTEMA ────────────────────────────────────────────
+function disenarSistema(kwTotal, fase, tipoInv) {
+  const maxInversor = (fase === 'monofasico') ? 11.4 : 100;
+  const catalogo = CATALOGO_INVERSORES[fase][tipoInv] || CATALOGO_INVERSORES[fase]['estandar'];
+
+  // Encontrar el inversor unitario más adecuado
+  function eligeInversor(kw) {
+    for (let i = 0; i < catalogo.length; i++) {
+      if (kw <= catalogo[i].max) return catalogo[i];
+    }
+    return catalogo[catalogo.length - 1];
+  }
+
+  if (kwTotal <= maxInversor) {
+    const inv = eligeInversor(kwTotal);
+    return { inversores: 1, kwPorInversor: inv.kw, kwTotal: inv.kw, modelo: inv.modelo };
+  } else {
+    // Múltiples inversores: dividir en partes iguales usando el más grande disponible
+    const invMax = catalogo[catalogo.length - 1];
+    const n = Math.ceil(kwTotal / invMax.kw);
+    const kwCadaUno = Math.ceil(kwTotal / n);
+    const invElegido = eligeInversor(kwCadaUno);
+    return {
+      inversores: n,
+      kwPorInversor: invElegido.kw,
+      kwTotal: n * invElegido.kw,
+      modelo: invElegido.modelo
     };
- 
-    const SISTEMAS_INTERCONECTADOS = {
-      3: { nombre_es: "Sistema Interconectado 3kW", nombre_en: "Grid-Tied System 3kW", desc_es: "Ideal para casas pequeñas", desc_en: "Ideal for small homes", paneles: 6, inversor: "3kw", precio: 57200 },
-      4: { nombre_es: "Sistema Interconectado 4kW", nombre_en: "Grid-Tied System 4kW", desc_es: "Perfecto para hogares promedio", desc_en: "Perfect for average households", paneles: 8, inversor: "4kw", precio: 76260 },
-      5: { nombre_es: "Sistema Interconectado 5kW", nombre_en: "Grid-Tied System 5kW", desc_es: "Para familias grandes", desc_en: "For large families", paneles: 10, inversor: "5kw", precio: 95300 },
-      6: { nombre_es: "Sistema Interconectado 6kW", nombre_en: "Grid-Tied System 6kW", desc_es: "Para casas grandes con alto consumo", desc_en: "For large homes with high usage", paneles: 12, inversor: "6kw", precio: 114400 },
-      7: { nombre_es: "Sistema Interconectado 7kW", nombre_en: "Grid-Tied System 7kW", desc_es: "Ideal para pequeñas empresas", desc_en: "Ideal for small businesses", paneles: 14, inversor: "7kw", precio: 133462 },
-      8: { nombre_es: "Sistema Interconectado 8kW", nombre_en: "Grid-Tied System 8kW", desc_es: "Para negocios medianos", desc_en: "For medium-sized businesses", paneles: 16, inversor: "8kw", precio: 152528 }
-    };
- 
-    const TEXTS = {
-      es: {
-        tagline: "Energía Solar de Alta Eficiencia",
-        tClient: "Información del Cliente",
-        namePH: "Nombre completo",
-        phonePH: "WhatsApp",
-        addressPH: "Ubicación",
-        tService: "Datos del Servicio CFE",
-        lTarifa: "Tarifa CFE actual",
-        lFase: "Tipo de conexión",
-        optMono: "Monofásico (1 fase)",
-        optBi: "Bifásico (2 fases)",
-        optTri: "Trifásico (3 fases)",
-        tUsage: "Consumo Histórico",
-        lPeriodo: "Periodo de facturación",
-        optBimestral: "Residencial (Bimestral)",
-        optMensual: "Comercial (Mensual)",
-        tCerts: "Certificaciones y Calidad",
-        cert1: "Instalación de Sistemas Fotovoltaicos (PFVI).",
-        cert2: "Supervisión de Instalaciones (IPV).",
-        tResult: "SISTEMA SUGERIDO:",
-        tPanels: "PANELES",
-        tPanelType: "TIPO DE PANEL:",
-        opt550: "Tecnología 550W",
-        opt580: "Tecnología 580W",
-        opt620: "Tecnología 620W",
-        tYourSystem: "⚡ Tu sistema recomendado",
-        tInstiva: "Inst+IVA incl",
-        tSumaCoupon: "Tengo cupón 10% en app SUMA",
-        tCurrentBill: "Tu recibo CFE estimado actual:",
-        tWithSolar: "Con solar: $0/mes → Ahorras $",
-        tPerMonth: "/mes",
-        tWaBtn: "Enviar resultado por WhatsApp y recibir cotización gratis",
-        tContact: 'Un asesor te contacta hoy mismo. Sin compromiso.<br><strong>WhatsApp Ventas: +52 1 612 219 8325</strong> | <strong>Servicio Técnico: +52 1 612 167 3200</strong><br><strong>servicesbajapro@gmail.com</strong>',
-        lDept: "Enviar a departamento:",
-        optSales: "VENTAS",
-        optTech: "SERVICIO TÉCNICO",
-        btnWa: "SOLICITAR COTIZACIÓN",
-        alertMsg: "Por favor ingrese sus datos y consumo.",
-        cycles: "CICLOS",
-        years: "AÑOS",
-        waGreet: "Hola Baja Pro-Services, usé la calculadora:",
-        waPeriod: (tipo) => tipo === 'bimestral' ? 'bimestral' : 'mensual',
-        waLines: (d) => `⚡ Consumo prom: ${d.kwh} kWh ${d.periodo}%0A💸 Recibo actual: $${d.recibo}/mes%0A🔌 Tarifa CFE: ${d.tarifa} (${d.fase})%0A💰 Ahorro con solar: $${d.recibo}/mes%0A🔋 ${d.sistNombre}%0A📋 ${d.paneles} paneles / Inversor ${d.inversor}%0A💵 Inversión: $${d.precio} Inst+IVA incl${d.suma}%0A%0AQuiero mi cotización formal gratis. Mi nombre es ${d.nombre}.`,
-        waSuma: "%0A🎟️ Presentaré mi cupón SUMA para 10% descuento",
-        waNoSuma: "",
-        waAlertNombre: "Por favor ingrese nombre y consumo.",
-        sysNombre: (s) => s.nombre_es,
-        sysDesc: (s) => s.desc_es,
-      },
-      en: {
-        tagline: "High-Efficiency Solar Energy",
-        tClient: "Client Information",
-        namePH: "Full name",
-        phonePH: "WhatsApp",
-        addressPH: "Location",
-        tService: "CFE Service Data",
-        lTarifa: "Current CFE Tariff",
-        lFase: "Connection Type",
-        optMono: "Single-phase (1 phase)",
-        optBi: "Split-phase (2 phases)",
-        optTri: "Three-phase (3 phases)",
-        tUsage: "Historical Consumption",
-        lPeriodo: "Billing period",
-        optBimestral: "Residential (Bi-monthly)",
-        optMensual: "Commercial (Monthly)",
-        tCerts: "Certifications & Quality",
-        cert1: "Photovoltaic System Installation (PFVI).",
-        cert2: "Installation Supervision (IPV).",
-        tResult: "SUGGESTED SYSTEM:",
-        tPanels: "PANELS",
-        tPanelType: "PANEL TYPE:",
-        opt550: "550W Technology",
-        opt580: "580W Technology",
-        opt620: "620W Technology",
-        tYourSystem: "⚡ Your recommended system",
-        tInstiva: "Install+VAT incl",
-        tSumaCoupon: "I have a 10% SUMA app coupon",
-        tCurrentBill: "Your estimated current CFE bill:",
-        tWithSolar: "With solar: $0/mo → You save $",
-        tPerMonth: "/mo",
-        tWaBtn: "Send result via WhatsApp & get free quote",
-        tContact: 'An advisor will contact you today. No commitment.<br><strong>Sales WhatsApp: +52 1 612 219 8325</strong> | <strong>Tech Support: +52 1 612 167 3200</strong><br><strong>servicesbajapro@gmail.com</strong>',
-        lDept: "Send to department:",
-        optSales: "SALES",
-        optTech: "TECHNICAL SUPPORT",
-        btnWa: "REQUEST QUOTE",
-        alertMsg: "Please enter your information and consumption.",
-        cycles: "CYCLES",
-        years: "YEARS",
-        waGreet: "Hi Baja Pro-Services, I used the calculator:",
-        waPeriod: (tipo) => tipo === 'bimestral' ? 'bi-monthly' : 'monthly',
-        waLines: (d) => `⚡ Avg consumption: ${d.kwh} kWh ${d.periodo}%0A💸 Current bill: $${d.recibo}/mo%0A🔌 CFE Tariff: ${d.tarifa} (${d.fase})%0A💰 Savings with solar: $${d.recibo}/mo%0A🔋 ${d.sistNombre}%0A📋 ${d.paneles} panels / Inverter ${d.inversor}%0A💵 Investment: $${d.precio} Install+VAT incl${d.suma}%0A%0AI want my free formal quote. My name is ${d.nombre}.`,
-        waSuma: "%0A🎟️ I will present my SUMA coupon for 10% discount",
-        waNoSuma: "",
-        waAlertNombre: "Please enter your name and consumption.",
-        sysNombre: (s) => s.nombre_en,
-        sysDesc: (s) => s.desc_en,
-      }
-    };
- 
-    let currentLang = 'es';
- 
-    function applyLang(lang) {
-      const t = TEXTS[lang];
-      document.getElementById('tagline').innerText = t.tagline;
-      document.getElementById('t-client').innerText = t.tClient;
-      document.getElementById('nombre').placeholder = t.namePH;
-      document.getElementById('telefono').placeholder = t.phonePH;
-      document.getElementById('direccion').placeholder = t.addressPH;
-      document.getElementById('t-service').innerText = t.tService;
-      document.getElementById('l-tarifa').innerText = t.lTarifa;
-      document.getElementById('l-fase').innerText = t.lFase;
-      document.getElementById('opt-mono').innerText = t.optMono;
-      document.getElementById('opt-bi').innerText = t.optBi;
-      document.getElementById('opt-tri').innerText = t.optTri;
-      document.getElementById('t-usage').innerText = t.tUsage;
-      document.getElementById('l-periodo').innerText = t.lPeriodo;
-      document.getElementById('opt-bimestral').innerText = t.optBimestral;
-      document.getElementById('opt-mensual').innerText = t.optMensual;
-      document.getElementById('t-certs').innerText = t.tCerts;
-      document.getElementById('cert1').innerText = t.cert1;
-      document.getElementById('cert2').innerText = t.cert2;
-      document.getElementById('t-result').innerText = t.tResult;
-      document.getElementById('t-panels').innerText = t.tPanels;
-      document.getElementById('t-paneltype').innerText = t.tPanelType;
-      document.getElementById('opt-550').innerText = t.opt550;
-      document.getElementById('opt-580').innerText = t.opt580;
-      document.getElementById('opt-620').innerText = t.opt620;
-      document.getElementById('t-yourSystem').innerText = t.tYourSystem;
-      document.getElementById('t-instiva').innerText = t.tInstiva;
-      document.getElementById('t-sumacoupon').innerText = t.tSumaCoupon;
-      document.getElementById('t-currentbill').innerText = t.tCurrentBill;
-      document.getElementById('t-withsolar').innerText = t.tWithSolar;
-      document.getElementById('t-permonth').innerText = t.tPerMonth;
-      document.getElementById('btnWhatsAppBajaPro').innerText = t.tWaBtn;
-      document.getElementById('t-contact').innerHTML = t.tContact;
-      document.getElementById('l-dept').innerText = t.lDept;
-      document.getElementById('opt-sales').innerText = t.optSales;
-      document.getElementById('opt-tech').innerText = t.optTech;
-      document.getElementById('btn-wa').innerText = t.btnWa;
-      document.querySelectorAll('.t-cycles').forEach(el => el.innerText = t.cycles);
-      document.querySelectorAll('.t-years').forEach(el => el.innerText = t.years);
+  }
+}
+
+// ─── STRINGS BILINGÜE ────────────────────────────────────────────────────────
+const TEXTS = {
+  es: {
+    tagline: "Energía Solar de Alta Eficiencia",
+    tClient: "Información del Cliente",
+    namePH: "Nombre completo", phonePH: "WhatsApp", addressPH: "Ubicación",
+    tService: "Datos del Servicio CFE",
+    lTarifa: "Tarifa CFE actual", lFase: "Tipo de conexión",
+    optMono: "Monofásico (1 fase)", optBi: "Bifásico (2 fases)", optTri: "Trifásico (3 fases)",
+    tUsage: "Consumo Histórico",
+    lPeriodo: "Periodo de facturación",
+    optBimestral: "Residencial (Bimestral)", optMensual: "Comercial (Mensual)",
+    tCerts: "Certificaciones y Calidad",
+    cert1: "Instalación de Sistemas Fotovoltaicos (PFVI).",
+    cert2: "Supervisión de Instalaciones (IPV).",
+    tResult: "SISTEMA SUGERIDO:",
+    tPanels: "PANELES",
+    lKwextra: "kW adicionales",
+    lPanelw: "Tipo de panel",
+    lInvtype: "Tipo de inversor",
+    optEstandar: "Estándar (Grid-Tied)",
+    optHibrido: "Híbrido (Con batería)",
+    opt550: "550W", opt580: "580W", opt620: "620W",
+    tYourSystem: "⚡ Tu sistema recomendado",
+    tInstiva: "Inst+IVA incl",
+    tSumaCoupon: "Tengo cupón 10% en app SUMA",
+    tCurrentBill: "Tu recibo CFE estimado actual:",
+    tWithSolar: "Con solar: $0/mes → Ahorras $",
+    tPerMonth: "/mes",
+    tWaBtn: "Enviar resultado por WhatsApp y recibir cotización gratis",
+    tContact: 'Un asesor te contacta hoy mismo. Sin compromiso.<br><strong>WhatsApp Ventas: +52 1 612 219 8325</strong> | <strong>Servicio Técnico: +52 1 612 167 3200</strong><br><strong>servicesbajapro@gmail.com</strong>',
+    lDept: "Enviar a departamento:",
+    optSales: "VENTAS", optTech: "SERVICIO TÉCNICO",
+    btnWa: "SOLICITAR COTIZACIÓN",
+    alertMsg: "Por favor ingrese sus datos y consumo.",
+    cycles: "CICLOS", years: "AÑOS",
+    alertPhase: (t) => `⚡ Tarifa ${t} requiere conexión TRIFÁSICA — selector actualizado automáticamente.`,
+    alertPhase10kw: "⚡ Consumo ≥10kW — se recomienda conexión TRIFÁSICA.",
+    invInfo: (d) => `${d.inversores}x Inversor ${d.kwPorInversor}kW → Total ${d.kwTotal}kW`,
+    waGreet: "Hola Baja Pro-Services, usé la calculadora:",
+    waPeriod: (t) => t === 'bimestral' ? 'bimestral' : 'mensual',
+    waLines: (d) => `⚡ Consumo prom: ${d.kwh} kWh ${d.periodo}%0A💸 Recibo actual: $${d.recibo}/mes%0A🔌 Tarifa CFE: ${d.tarifa} (${d.fase})%0A🔋 Sistema ${d.kwSistema}kW — ${d.inv}x Inversor ${d.kwInv}kW%0A📋 ${d.paneles} paneles ${d.watt}W%0A🏭 Marcas: ${d.modelo}%0A💵 Inversión aprox: $${d.precio} Inst+IVA incl${d.suma}%0A%0AQuiero mi cotización formal gratis. Mi nombre es ${d.nombre}.`,
+    waSuma: "%0A🎟️ Presentaré mi cupón SUMA para 10% descuento",
+    waNoSuma: "",
+    sysLabel: (kw, fase) => `Sistema ${kw}kW ${fase === 'trifasico' ? 'Trifásico' : 'Monofásico'}`,
+    sysDesc: (inv, kwinv, paneles, watt) => `${inv}x inversor ${kwinv}kW | ${paneles} paneles ${watt}W`,
+  },
+  en: {
+    tagline: "High-Efficiency Solar Energy",
+    tClient: "Client Information",
+    namePH: "Full name", phonePH: "WhatsApp", addressPH: "Location",
+    tService: "CFE Service Data",
+    lTarifa: "Current CFE Tariff", lFase: "Connection Type",
+    optMono: "Single-phase (1 phase)", optBi: "Split-phase (2 phases)", optTri: "Three-phase (3 phases)",
+    tUsage: "Historical Consumption",
+    lPeriodo: "Billing period",
+    optBimestral: "Residential (Bi-monthly)", optMensual: "Commercial (Monthly)",
+    tCerts: "Certifications & Quality",
+    cert1: "Photovoltaic System Installation (PFVI).",
+    cert2: "Installation Supervision (IPV).",
+    tResult: "SUGGESTED SYSTEM:",
+    tPanels: "PANELS",
+    lKwextra: "Additional kW",
+    lPanelw: "Panel type",
+    lInvtype: "Inverter type",
+    optEstandar: "Standard (Grid-Tied)",
+    optHibrido: "Hybrid (With battery)",
+    opt550: "550W", opt580: "580W", opt620: "620W",
+    tYourSystem: "⚡ Your recommended system",
+    tInstiva: "Install+VAT incl",
+    tSumaCoupon: "I have a 10% SUMA app coupon",
+    tCurrentBill: "Your estimated current CFE bill:",
+    tWithSolar: "With solar: $0/mo → You save $",
+    tPerMonth: "/mo",
+    tWaBtn: "Send result via WhatsApp & get free quote",
+    tContact: 'An advisor will contact you today. No commitment.<br><strong>Sales WhatsApp: +52 1 612 219 8325</strong> | <strong>Tech Support: +52 1 612 167 3200</strong><br><strong>servicesbajapro@gmail.com</strong>',
+    lDept: "Send to department:",
+    optSales: "SALES", optTech: "TECHNICAL SUPPORT",
+    btnWa: "REQUEST QUOTE",
+    alertMsg: "Please enter your information and consumption.",
+    cycles: "CYCLES", years: "YEARS",
+    alertPhase: (t) => `⚡ Tariff ${t} requires THREE-PHASE connection — selector updated automatically.`,
+    alertPhase10kw: "⚡ Consumption ≥10kW — three-phase connection is recommended.",
+    invInfo: (d) => `${d.inversores}x ${d.kwPorInversor}kW Inverter → Total ${d.kwTotal}kW`,
+    waGreet: "Hi Baja Pro-Services, I used the calculator:",
+    waPeriod: (t) => t === 'bimestral' ? 'bi-monthly' : 'monthly',
+    waLines: (d) => `⚡ Avg consumption: ${d.kwh} kWh ${d.periodo}%0A💸 Current bill: $${d.recibo}/mo%0A🔌 CFE Tariff: ${d.tarifa} (${d.fase})%0A🔋 System ${d.kwSistema}kW — ${d.inv}x Inverter ${d.kwInv}kW%0A📋 ${d.paneles} panels ${d.watt}W%0A🏭 Brands: ${d.modelo}%0A💵 Est. Investment: $${d.precio} Install+VAT incl${d.suma}%0A%0AI want my free formal quote. My name is ${d.nombre}.`,
+    waSuma: "%0A🎟️ I will present my SUMA coupon for 10% discount",
+    waNoSuma: "",
+    sysLabel: (kw, fase) => `${kw}kW ${fase === 'trifasico' ? 'Three-Phase' : 'Single-Phase'} System`,
+    sysDesc: (inv, kwinv, paneles, watt) => `${inv}x ${kwinv}kW inverter | ${paneles} panels ${watt}W`,
+  }
+};
+
+let currentLang = 'es';
+
+function applyLang(lang) {
+  const t = TEXTS[lang];
+  document.getElementById('tagline').innerText = t.tagline;
+  document.getElementById('t-client').innerText = t.tClient;
+  document.getElementById('nombre').placeholder = t.namePH;
+  document.getElementById('telefono').placeholder = t.phonePH;
+  document.getElementById('direccion').placeholder = t.addressPH;
+  document.getElementById('t-service').innerText = t.tService;
+  document.getElementById('l-tarifa').innerText = t.lTarifa;
+  document.getElementById('l-fase').innerText = t.lFase;
+  document.getElementById('opt-mono').innerText = t.optMono;
+  document.getElementById('opt-bi').innerText = t.optBi;
+  document.getElementById('opt-tri').innerText = t.optTri;
+  document.getElementById('t-usage').innerText = t.tUsage;
+  document.getElementById('l-periodo').innerText = t.lPeriodo;
+  document.getElementById('opt-bimestral').innerText = t.optBimestral;
+  document.getElementById('opt-mensual').innerText = t.optMensual;
+  document.getElementById('t-certs').innerText = t.tCerts;
+  document.getElementById('cert1').innerText = t.cert1;
+  document.getElementById('cert2').innerText = t.cert2;
+  document.getElementById('t-result').innerText = t.tResult;
+  document.getElementById('t-panels').innerText = t.tPanels;
+  document.getElementById('l-kwextra').innerText = t.lKwextra;
+  document.getElementById('l-panelw').innerText = t.lPanelw;
+  document.getElementById('l-invtype').innerText = t.lInvtype;
+  document.getElementById('opt-estandar').innerText = t.optEstandar;
+  document.getElementById('opt-hibrido').innerText = t.optHibrido;
+  document.getElementById('opt-550').innerText = t.opt550;
+  document.getElementById('opt-580').innerText = t.opt580;
+  document.getElementById('opt-620').innerText = t.opt620;
+  document.getElementById('t-yourSystem').innerText = t.tYourSystem;
+  document.getElementById('t-instiva').innerText = t.tInstiva;
+  document.getElementById('t-sumacoupon').innerText = t.tSumaCoupon;
+  document.getElementById('t-currentbill').innerText = t.tCurrentBill;
+  document.getElementById('t-withsolar').innerText = t.tWithSolar;
+  document.getElementById('t-permonth').innerText = t.tPerMonth;
+  document.getElementById('btnWhatsAppBajaPro').innerText = t.tWaBtn;
+  document.getElementById('t-contact').innerHTML = t.tContact;
+  document.getElementById('l-dept').innerText = t.lDept;
+  document.getElementById('opt-sales').innerText = t.optSales;
+  document.getElementById('opt-tech').innerText = t.optTech;
+  document.getElementById('btn-wa').innerText = t.btnWa;
+  document.querySelectorAll('.t-cycles').forEach(el => el.innerText = t.cycles);
+  document.querySelectorAll('.t-years').forEach(el => el.innerText = t.years);
+}
+
+function changeLang(lang) {
+  currentLang = lang;
+  document.getElementById('btn-es').classList.toggle('active', lang === 'es');
+  document.getElementById('btn-en').classList.toggle('active', lang === 'en');
+  applyLang(lang);
+  actualizarBotonWhatsApp();
+}
+
+function alternarInputs() {
+  const tipo = document.getElementById('tipoTarifa').value;
+  document.getElementById('gridBimestre').classList.toggle('hidden', tipo !== 'bimestral');
+  document.getElementById('gridMes').classList.toggle('hidden', tipo !== 'mensual');
+  calcular();
+}
+
+function onTarifaChange() {
+  const tarifa = document.getElementById('tarifaCFE').value;
+  const t = TEXTS[currentLang];
+  const alertEl = document.getElementById('alertPhase');
+  if (TARIFAS_TRIFASICO.includes(tarifa)) {
+    document.getElementById('tipoFase').value = 'trifasico';
+    alertEl.style.display = 'block';
+    alertEl.innerText = t.alertPhase(tarifa);
+  } else {
+    alertEl.style.display = 'none';
+  }
+  // Comerciales siempre mensual
+  if (TARIFAS_COMERCIALES.includes(tarifa)) {
+    document.getElementById('tipoTarifa').value = 'mensual';
+    alternarInputs();
+  }
+  calcular();
+}
+
+function calcularReciboCFE(kwhMensual) {
+  let costo = 0;
+  let kwhRestante = kwhMensual;
+  const t = TARIFAS_CFE_2026;
+  if (kwhMensual > t.dac.umbral) {
+    costo = kwhMensual * t.dac.precio;
+  } else {
+    const kwhBasico = Math.min(kwhRestante, t.basico.limite);
+    costo += kwhBasico * t.basico.precio;
+    kwhRestante -= kwhBasico;
+    if (kwhRestante > 0) {
+      const kwhIntermedio = Math.min(kwhRestante, t.intermedio.limite);
+      costo += kwhIntermedio * t.intermedio.precio;
+      kwhRestante -= kwhIntermedio;
     }
- 
-    function changeLang(lang) {
-      currentLang = lang;
-      document.getElementById('btn-es').classList.toggle('active', lang === 'es');
-      document.getElementById('btn-en').classList.toggle('active', lang === 'en');
-      applyLang(lang);
-      actualizarBotonWhatsApp();
-    }
- 
-    function alternarInputs() {
-      const tipo = document.getElementById('tipoTarifa').value;
-      document.getElementById('gridBimestre').classList.toggle('hidden', tipo !== 'bimestral');
-      document.getElementById('gridMes').classList.toggle('hidden', tipo !== 'mensual');
-      calcular();
-    }
- 
-    function calcularReciboCFE(kwhMensual) {
-      let costo = 0;
-      let kwhRestante = kwhMensual;
-      const t = TARIFAS_CFE_2026;
-      if (kwhMensual > t.dac.umbral) {
-        costo = kwhMensual * t.dac.precio;
-      } else {
-        const kwhBasico = Math.min(kwhRestante, t.basico.limite);
-        costo += kwhBasico * t.basico.precio;
-        kwhRestante -= kwhBasico;
-        if (kwhRestante > 0) {
-          const kwhIntermedio = Math.min(kwhRestante, t.intermedio.limite);
-          costo += kwhIntermedio * t.intermedio.precio;
-          kwhRestante -= kwhIntermedio;
-        }
-        if (kwhRestante > 0) costo += kwhRestante * t.excedente.precio;
-      }
-      return Math.round(costo * (1 + t.iva));
-    }
- 
-    function calcular() {
-      let totalKwh = 0;
-      let count = 0;
-      const tipo = document.getElementById('tipoTarifa').value;
-      const selector = tipo === 'bimestral' ? '.in-kwh' : '.in-kwh-m';
-      const currentPanelWatt = Number(document.getElementById('panelWatts').value);
-      const divisorDias = tipo === 'bimestral' ? 61 : 30.4;
- 
-      document.querySelectorAll(selector).forEach(i => {
-        if (i.value > 0) { totalKwh += Number(i.value); count++; }
-      });
- 
-      if (totalKwh > 0 && count > 0) {
-        const promedioDiarioKwh = (totalKwh / count) / divisorDias;
-        const kwpNecesario = (promedioDiarioKwh / HSP) / EFFICIENCY;
-        const numeroPaneles = Math.ceil((kwpNecesario * 1000) / currentPanelWatt);
-        document.getElementById('panelCount').innerText = numeroPaneles;
-      } else {
-        document.getElementById('panelCount').innerText = 0;
-      }
-      actualizarBotonWhatsApp();
-    }
- 
-    function actualizarBotonWhatsApp() {
-      const t = TEXTS[currentLang];
-      const panelesCalc = parseInt(document.getElementById('panelCount').innerText) || 0;
-      const wattsPorPanel = parseInt(document.getElementById('panelWatts').value) || 550;
- 
-      if (panelesCalc === 0) {
-        document.getElementById('whatsappLeadSection').style.display = 'none';
-        return;
-      }
- 
-      const kwNecesarios = (panelesCalc * wattsPorPanel) / 1000;
-      const kwRedondeado = Math.ceil(kwNecesarios);
-      const kwsDisponibles = Object.keys(SISTEMAS_INTERCONECTADOS).map(Number).sort((a, b) => a - b);
-      let kwElegido = kwsDisponibles.find(kw => kw >= kwRedondeado) || 8;
-      const sistemaBase = SISTEMAS_INTERCONECTADOS[kwElegido];
-      const sistemaElegido = { ...sistemaBase, kw: kwElegido };
- 
-      document.getElementById('panelCount').innerText = sistemaElegido.paneles;
- 
-      let totalKwh = 0, count = 0;
-      const tipo = document.getElementById('tipoTarifa').value;
-      const selector = tipo === 'bimestral' ? '.in-kwh' : '.in-kwh-m';
-      document.querySelectorAll(selector).forEach(i => {
-        if (i.value > 0) { totalKwh += Number(i.value); count++; }
-      });
-      const promedioKwhPeriodo = count > 0 ? Math.round(totalKwh / count) : 0;
-      const promedioKwhMensual = promedioKwhPeriodo * (tipo === 'bimestral' ? 0.5 : 1);
- 
-      const reciboSinSolar = calcularReciboCFE(promedioKwhMensual);
-      const tieneSuma = document.getElementById('cuponSuma').checked;
-      const precioFinal = tieneSuma ? Math.round(sistemaElegido.precio * (1 - DESCUENTO_SUMA)) : sistemaElegido.precio;
- 
-      document.getElementById('sistemaRecomendado').innerText = sistemaElegido.kw;
-      document.getElementById('descripcionSistema').innerText = `${t.sysNombre(sistemaElegido)} – ${t.sysDesc(sistemaElegido)} | ${sistemaElegido.paneles} ${t.tPanels.toLowerCase()} / Inversor ${sistemaElegido.inversor}`;
- 
-      if (tieneSuma) {
-        document.getElementById('precioContainer').innerHTML = `<span class="precio-tachado">$${sistemaElegido.precio.toLocaleString('es-MX')}</span> <strong style="color:#059669;">$${precioFinal.toLocaleString('es-MX')}</strong> <span style="background:#dcfce7; color:#059669; padding:2px 6px; border-radius:4px; font-size:11px; font-weight:700;">-10% SUMA</span>`;
-      } else {
-        document.getElementById('precioContainer').innerHTML = `<strong>$${sistemaElegido.precio.toLocaleString('es-MX')}</strong>`;
-      }
- 
-      document.getElementById('reciboActual').innerText = reciboSinSolar.toLocaleString('es-MX');
-      document.getElementById('ahorroEstimado').innerText = reciboSinSolar.toLocaleString('es-MX');
-      document.getElementById('whatsappLeadSection').style.display = 'block';
- 
-      const nombre = document.getElementById('nombre').value || (currentLang === 'es' ? 'Cliente' : 'Customer');
-      const periodo = t.waPeriod(tipo);
-      const textoSuma = tieneSuma ? t.waSuma : t.waNoSuma;
-      const tarifaSeleccionada = document.getElementById('tarifaCFE').value;
-      const faseSeleccionada = document.getElementById('tipoFase').selectedOptions[0].text;
- 
-      const waData = {
-        kwh: promedioKwhPeriodo,
-        periodo,
-        recibo: reciboSinSolar.toLocaleString('es-MX'),
-        tarifa: tarifaSeleccionada,
-        fase: faseSeleccionada,
-        sistNombre: t.sysNombre(sistemaElegido),
-        paneles: sistemaElegido.paneles,
-        inversor: sistemaElegido.inversor,
-        precio: precioFinal.toLocaleString('es-MX'),
-        suma: textoSuma,
-        nombre
-      };
- 
-      const mensaje = `${t.waGreet}%0A%0A${t.waLines(waData)}`;
-      document.getElementById('btnWhatsAppBajaPro').href = `https://wa.me/5216122198325?text=${mensaje}`;
-    }
- 
-    document.querySelectorAll('.in-kwh,.in-kwh-m, #panelWatts, #tipoTarifa, #tarifaCFE, #tipoFase').forEach(el => {
-      el.addEventListener('input', calcular);
-      el.addEventListener('change', calcular);
-    });
- 
-    function enviarWA() {
-      const t = TEXTS[currentLang];
-      const nombre = document.getElementById('nombre').value;
-      const tel = document.getElementById('telefono').value;
-      const loc = document.getElementById('direccion').value;
-      const panels = document.getElementById('panelCount').innerText;
-      const watts = document.getElementById('panelWatts').value;
-      const tarifa = document.getElementById('tarifaCFE').value;
-      const fase = document.getElementById('tipoFase').value;
-      const num = document.getElementById('waNumber').value;
-      if (!nombre || panels === "0") {
-        alert(t.alertMsg);
-        return;
-      }
-      const msg = encodeURIComponent(
-        currentLang === 'es'
-          ? `*COTIZACIÓN SOLAR - BAJA PRO-SERVICES*\nCliente: ${nombre}\nWhatsApp: ${tel}\nUbicación: ${loc}\nTarifa CFE: ${tarifa}\nFase: ${fase}\nSugerencia: ${panels} Paneles de ${watts}W\nCálculo basado en 6.19 HSP (BCS)`
-          : `*SOLAR QUOTE - BAJA PRO-SERVICES*\nCustomer: ${nombre}\nWhatsApp: ${tel}\nLocation: ${loc}\nCFE Tariff: ${tarifa}\nPhase: ${fase}\nSuggested: ${panels} Panels of ${watts}W\nCalculation based on 6.19 HSP (BCS)`
-      );
-      window.open(`https://wa.me/${num}?text=${msg}`, '_blank');
-    }
- 
-    // Init
-    applyLang('es');
-    document.addEventListener('DOMContentLoaded', () => { 
-        applyLang('es'); 
-        document.getElementById('tarifaCFE').value = '1C';
-        document.getElementById('tipoFase').value = 'bifasico';
-        calcular(); 
-    });
+    if (kwhRestante > 0) costo += kwhRestante * t.excedente.precio;
+  }
+  return Math.round(costo * (1 + t.iva));
+}
+
+// ─── CÁLCULO PRINCIPAL ────────────────────────────────────────────────────────
+let ultimoDiseno = null;
+
+function calcular() {
+  const t = TEXTS[currentLang];
+  let totalKwh = 0, count = 0;
+  const tipo = document.getElementById('tipoTarifa').value;
+  const selector = tipo === 'bimestral' ? '.in-kwh' : '.in-kwh-m';
+  const wattsPorPanel = parseInt(document.getElementById('panelWatts').value) || 550;
+  const tipoInv = document.getElementById('tipoInversor').value || 'estandar';
+  const kwAdicional = parseFloat(document.getElementById('kwAdicional').value) || 0;
+  const divisorDias = tipo === 'bimestral' ? 61 : 30.4;
+
+  document.querySelectorAll(selector).forEach(i => {
+    if (i.value > 0) { totalKwh += Number(i.value); count++; }
+  });
+
+  if (totalKwh <= 0 || count === 0) {
+    document.getElementById('panelCount').innerText = 0;
+    document.getElementById('sistemaKwLabel').innerText = '0 kW';
+    document.getElementById('whatsappLeadSection').style.display = 'none';
+    ultimoDiseno = null;
+    return;
+  }
+
+  const promedioDiarioKwh = (totalKwh / count) / divisorDias;
+  const kwpBase = (promedioDiarioKwh / HSP) / EFFICIENCY;
+  const kwpTotal = kwpBase + kwAdicional;
+
+  // Determinar fase (puede haber sido forzada por tarifa)
+  let faseActual = document.getElementById('tipoFase').value;
+  // Si monofásico pero >=10kW, recomendar trifásico
+  const alertEl = document.getElementById('alertPhase');
+  const tarifa = document.getElementById('tarifaCFE').value;
+  if (kwpTotal >= 10 && faseActual !== 'trifasico' && !TARIFAS_TRIFASICO.includes(tarifa)) {
+    alertEl.style.display = 'block';
+    alertEl.innerText = t.alertPhase10kw;
+  } else if (!TARIFAS_TRIFASICO.includes(tarifa)) {
+    alertEl.style.display = 'none';
+  }
+
+  // Normalizar fase para el catálogo (bifásico → monofásico en catálogo)
+  const faseCatalogo = (faseActual === 'trifasico') ? 'trifasico' : 'monofasico';
+
+  // Diseñar sistema
+  const diseno = disenarSistema(kwpTotal, faseCatalogo, tipoInv);
+  ultimoDiseno = { diseno, faseActual, kwpTotal, wattsPorPanel, tipoInv };
+
+  // Paneles
+  const paneles = Math.ceil((diseno.kwTotal * 1000) / wattsPorPanel);
+  document.getElementById('panelCount').innerText = paneles;
+  document.getElementById('sistemaKwLabel').innerText = `${diseno.kwTotal} kW`;
+
+  // Info inversor
+  document.getElementById('inverterInfoTitle').innerText = t.invInfo(diseno);
+  document.getElementById('inverterInfoDetail').innerText = diseno.modelo;
+
+  actualizarBotonWhatsApp(diseno, paneles, wattsPorPanel, faseActual, kwpTotal);
+}
+
+function actualizarBotonWhatsApp(diseno, paneles, wattsPorPanel, faseActual, kwpTotal) {
+  if (!diseno) { document.getElementById('whatsappLeadSection').style.display = 'none'; return; }
+  const t = TEXTS[currentLang];
+
+  // Precio estimado
+  const precioBase = Math.round(diseno.kwTotal * PRECIO_POR_KW);
+  const tieneSuma = document.getElementById('cuponSuma').checked;
+  const precioFinal = tieneSuma ? Math.round(precioBase * (1 - DESCUENTO_SUMA)) : precioBase;
+
+  // Consumo
+  const tipo = document.getElementById('tipoTarifa').value;
+  const selector = tipo === 'bimestral' ? '.in-kwh' : '.in-kwh-m';
+  let totalKwh = 0, count = 0;
+  document.querySelectorAll(selector).forEach(i => {
+    if (i.value > 0) { totalKwh += Number(i.value); count++; }
+  });
+  const promedioKwhPeriodo = count > 0 ? Math.round(totalKwh / count) : 0;
+  const promedioKwhMensual = promedioKwhPeriodo * (tipo === 'bimestral' ? 0.5 : 1);
+  const reciboSinSolar = calcularReciboCFE(promedioKwhMensual);
+
+  // UI
+  document.getElementById('sistemaRecomendado').innerText = diseno.kwTotal;
+  document.getElementById('descripcionSistema').innerText = t.sysDesc(diseno.inversores, diseno.kwPorInversor, paneles, wattsPorPanel);
+
+  if (tieneSuma) {
+    document.getElementById('precioContainer').innerHTML = `<span class="precio-tachado">$${precioBase.toLocaleString('es-MX')}</span> <strong style="color:#059669;">$${precioFinal.toLocaleString('es-MX')}</strong> <span style="background:#dcfce7; color:#059669; padding:2px 6px; border-radius:4px; font-size:11px; font-weight:700;">-10% SUMA</span>`;
+  } else {
+    document.getElementById('precioContainer').innerHTML = `<strong>$${precioBase.toLocaleString('es-MX')}</strong>`;
+  }
+
+  document.getElementById('reciboActual').innerText = reciboSinSolar.toLocaleString('es-MX');
+  document.getElementById('ahorroEstimado').innerText = reciboSinSolar.toLocaleString('es-MX');
+  document.getElementById('whatsappLeadSection').style.display = 'block';
+
+  // WhatsApp message
+  const nombre = document.getElementById('nombre').value || (currentLang === 'es' ? 'Cliente' : 'Customer');
+  const periodo = t.waPeriod(tipo);
+  const textoSuma = tieneSuma ? t.waSuma : t.waNoSuma;
+  const tarifaSeleccionada = document.getElementById('tarifaCFE').value;
+  const faseTexto = document.getElementById('tipoFase').selectedOptions[0].text;
+
+  const waData = {
+    kwh: promedioKwhPeriodo,
+    periodo,
+    recibo: reciboSinSolar.toLocaleString('es-MX'),
+    tarifa: tarifaSeleccionada,
+    fase: faseTexto,
+    kwSistema: diseno.kwTotal,
+    inv: diseno.inversores,
+    kwInv: diseno.kwPorInversor,
+    paneles,
+    watt: wattsPorPanel,
+    modelo: diseno.modelo,
+    precio: precioFinal.toLocaleString('es-MX'),
+    suma: textoSuma,
+    nombre
+  };
+
+  const mensaje = `${t.waGreet}%0A%0A${t.waLines(waData)}`;
+  document.getElementById('btnWhatsAppBajaPro').href = `https://wa.me/5216122198325?text=${mensaje}`;
+}
+
+// Re-trigger actualizarBotonWhatsApp when checkbox changes
+document.getElementById('cuponSuma').addEventListener('change', () => {
+  if (ultimoDiseno) {
+    const { diseno, faseActual, kwpTotal, wattsPorPanel } = ultimoDiseno;
+    const paneles = Math.ceil((diseno.kwTotal * 1000) / wattsPorPanel);
+    actualizarBotonWhatsApp(diseno, paneles, wattsPorPanel, faseActual, kwpTotal);
+  }
+});
+
+function enviarWA() {
+  const t = TEXTS[currentLang];
+  const nombre = document.getElementById('nombre').value;
+  const tel = document.getElementById('telefono').value;
+  const loc = document.getElementById('direccion').value;
+  const panels = document.getElementById('panelCount').innerText;
+  const watts = document.getElementById('panelWatts').value;
+  const tarifa = document.getElementById('tarifaCFE').value;
+  const fase = document.getElementById('tipoFase').value;
+  const num = document.getElementById('waNumber').value;
+  const kwSistema = document.getElementById('sistemaKwLabel').innerText;
+  if (!nombre || panels === "0") { alert(t.alertMsg); return; }
+  const modelo = ultimoDiseno ? ultimoDiseno.diseno.modelo : '';
+  const msg = encodeURIComponent(
+    currentLang === 'es'
+      ? `*COTIZACIÓN SOLAR - BAJA PRO-SERVICES*\nCliente: ${nombre}\nWhatsApp: ${tel}\nUbicación: ${loc}\nTarifa CFE: ${tarifa}\nFase: ${fase}\nSistema: ${kwSistema}\nPaneles: ${panels} x ${watts}W\nMarcas: ${modelo}\nCálculo basado en 6.19 HSP (BCS)`
+      : `*SOLAR QUOTE - BAJA PRO-SERVICES*\nCustomer: ${nombre}\nWhatsApp: ${tel}\nLocation: ${loc}\nCFE Tariff: ${tarifa}\nPhase: ${fase}\nSystem: ${kwSistema}\nPanels: ${panels} x ${watts}W\nBrands: ${modelo}\nCalculation based on 6.19 HSP (BCS)`
+  );
+  window.open(`https://wa.me/${num}?text=${msg}`, '_blank');
+}
+
+// Bind all inputs
+document.querySelectorAll('.in-kwh, .in-kwh-m, #panelWatts, #tipoTarifa, #tarifaCFE, #tipoFase, #tipoInversor, #kwAdicional').forEach(el => {
+  el.addEventListener('input', calcular);
+  el.addEventListener('change', calcular);
+});
+
+// Init
+applyLang('es');
+document.addEventListener('DOMContentLoaded', () => {
+  applyLang('es');
+  document.getElementById('tarifaCFE').value = '1C';
+  document.getElementById('tipoFase').value = 'bifasico';
+  calcular();
+});
 </script>
 </body>
 </html>
