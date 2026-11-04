@@ -16,6 +16,61 @@
         }
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: var(--aqua-bg); margin: 0; color: var(--text-main); padding-bottom: 50px; }
         .top-bar { background: var(--emerald-dark); color: white; text-align: center; padding: 10px; font-size: 11px; letter-spacing: 1px; font-weight: bold; text-transform: uppercase; }
+        
+        /* Hero Image Styles */
+        .hero-container { width: 100%; max-width: 800px; margin: 0 auto; }
+        .hero-image { width: 100%; height: auto; display: block; border-bottom: 4px solid var(--emerald-primary); }
+        
+        .promo-banner { background: var(--promo-orange); color: white; text-align: center; padding: 12px; font-weight: bold; font-size: 14px; }
+
+        .container { max-width: 700px; margin: 20px auto; background: var(--white); padding: 30px; border-radius: 20px; box-shadow: 0 15px 35px rgba(0, 100, 100, 0.1); }
+        
+        header { text-align: center; margin-bottom: 25px; border-bottom: 2px solid #e0f2f1; padding-bottom: 15px; }
+        header h1 { color: var(--emerald-dark); margin: 0; font-size: 26px; }
+        
+        .section-title { font-weight: 700; margin: 25px 0 12px; display: block; border-left: 4px solid var(--emerald-primary); padding-left: 12px; color: var(--emerald-dark); text-transform: uppercase; font-size: 14px; }
+        
+        input, select { width: 100%; padding: 12px; margin-bottom: 15px; border: 1px solid #d1d5db; border-radius: 10px; font-size: 15px; box-sizing: border-box; }
+        
+        .inputs-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; background: #f0fdf4; padding: 15px; border-radius: 12px; }
+        .inputs-grid label { font-size: 10px; font-weight: bold; color: var(--emerald-dark); display: block; margin-bottom: 4px; }
+
+        .result-box { background: var(--emerald-dark); color: white; padding: 25px; border-radius: 15px; text-align: center; margin: 25px 0; border-bottom: 5px solid var(--emerald-primary); }
+        .result-value { font-size: 38px; font-weight: 800; color: var(--emerald-primary); margin: 5px 0; }
+        .inv-suggested { color: #a7f3d0; font-size: 15px; font-weight: bold; margin-top: 10px; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 10px; }
+        
+        .diagnostic-card { background: rgba(255,255,255,0.08); border-radius: 10px; padding: 12px; margin-top: 12px; text-align: left; font-size: 13px; line-height: 1.4; color: #e2e8f0; }
+        .diagnostic-card strong { color: #fde047; }
+        
+        .cfe-warning { background-color: var(--warning-red); color: white; padding: 10px; border-radius: 8px; font-size: 12px; font-weight: bold; margin-He integrado el estilo exacto para el contenedor y la imagen del **Hero** (`.hero-container` y `.hero-image`) asegurando que mantenga su ancho responsivo y el borde inferior con el verde primario.
+
+El diseño, colores, fuentes y rutas de imágenes (`DIMA.png`, iconos, etc.) se mantienen completamente intactos, junto con toda la lógica de ingeniería y comercialización.
+
+---
+
+### 💻 Código Completo de `index.html`
+
+```html
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cotizador Solar Pro | BAJA PRO-SERVICES</title>
+    <style>
+        :root {
+            --aqua-bg: #e0f7fa;
+            --emerald-primary: #10b981;
+            --emerald-dark: #064e3b;
+            --white: #ffffff;
+            --text-main: #1f2937;
+            --promo-orange: #f39c12;
+            --warning-red: #ef4444;
+        }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: var(--aqua-bg); margin: 0; color: var(--text-main); padding-bottom: 50px; }
+        .top-bar { background: var(--emerald-dark); color: white; text-align: center; padding: 10px; font-size: 11px; letter-spacing: 1px; font-weight: bold; text-transform: uppercase; }
+        
+        /* ESTILOS EXACTOS SOLICITADOS PARA EL HERO IMAGE */
         .hero-container { width: 100%; max-width: 800px; margin: 0 auto; }
         .hero-image { width: 100%; height: auto; display: block; border-bottom: 4px solid var(--emerald-primary); }
         
@@ -209,12 +264,12 @@
         const tarifaKey = document.getElementById('tarifaCFE').value;
         const marca = document.getElementById('marcaInversor').value;
         
-        // Eficiencia del sistema ajustada al 95%
+        // Eficiencia del sistema al 95%
         const efficiency = 0.95; 
 
         let numPaneles = Math.ceil(avgDailyKwh / ((panelW / 1000) * his * efficiency)) || 0;
         
-        // Multiplicación por 0.98 UDS sobre los Watts totales de paneles en sistemas interconectados
+        // Multiplicación por 0.98 uds sobre los Watts totales de paneles en sistemas interconectados
         let totalWattsBrutos = numPaneles * panelW;
         let totalWattsAjustados = totalWattsBrutos * 0.98;
         let totalKw = totalWattsAjustados / 1000;
@@ -241,10 +296,10 @@
         // Diagnóstico de Comportamiento Tarifario
         evaluarComportamientoTarifario(tarifaKey, avgBimestral);
 
-        // Monto Global Estimado a $0.98 USD / Watt ($980 USD / kW) con 10% Descuento de Contado
+        // Monto Global Estimado a $0.98 USD / Watt con 10% Descuento de Contado
         const precioUSDperWatt = 0.98;
-        const precioUSDperKW = precioUSDperWatt * 1000; // $980 USD / kW
-        const tipoCambioMXN = 18.50; // Tipo de cambio de referencia
+        const precioUSDperKW = precioUSDperWatt * 1000;
+        const tipoCambioMXN = 18.50; 
         
         const precioKW_MXN = precioUSDperKW * tipoCambioMXN;
         const montoTotal = totalKw * precioKW_MXN;
@@ -340,8 +395,8 @@
                        `• *${monto}*%0A%0A` +
                        `_Descuento del 10% por compra de contado aplicable al total global._`;
 
-        window.open(`https://wa.me/526243554783?text=${report}`, '_blank');
-        window.open(`https://wa.me/526122198325?text=${report}`, '_blank');
+        window.open(`[https://wa.me/526243554783?text=$](https://wa.me/526243554783?text=$){report}`, '_blank');
+        window.open(`[https://wa.me/526122198325?text=$](https://wa.me/526122198325?text=$){report}`, '_blank');
         
         alert("¡Muchas gracias! Hemos recibido su solicitud y le enviaremos su propuesta técnica completa a la brevedad.");
     }
