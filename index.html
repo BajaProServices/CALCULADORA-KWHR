@@ -68,7 +68,7 @@
         <span class="section-title">Información del Cliente</span>
         <input type="text" id="nombre" placeholder="Nombre completo" required>
         <input type="tel" id="telefono" placeholder="WhatsApp del cliente" required>
-        <input type="text" id="direccion" placeholder="Ubicación (Ej. La Paz, BCS)">
+        <input type="text" id="direccion" placeholder="Ubicación (Ej. La Paz, BCS) required">
 
         <span class="section-title">Panel a Utilizar</span>
         <select id="potenciaPanel" onchange="recalcular()">
@@ -148,9 +148,9 @@
             inputs.forEach(i => totalBimestral += Number(i.value));
             
             const avgDailyKwh = (totalBimestral / 6) / 60; 
-            const his = 6.19;
+            const his = 6.;
             const panelW = Number(document.getElementById('potenciaPanel').value);
-            const efficiency = 0.80; 
+            const efficiency = 0.90; 
             
             const numPaneles = Math.ceil(avgDailyKwh / ((panelW / 1000) * his * efficiency)) || 0;
             const totalKw = (numPaneles * panelW) / 1000;
