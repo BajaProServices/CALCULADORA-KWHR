@@ -1,5 +1,4 @@
-<index.html>
-<html lang="es">
+<index.html><html lang="es">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -62,6 +61,11 @@
         .commercial-box { background: #f0fdf4; border: 2px dashed var(--emerald-primary); border-radius: 12px; padding: 20px; text-align: center; margin: 20px 0; }
         .commercial-box .price-tag { font-size: 32px; font-weight: 800; color: var(--emerald-dark); margin: 5px 0; }
         .disclaimer-text { font-size: 11px; color: #4b5563; text-align: center; font-weight: bold; margin-top: 15px; padding: 10px; background: #fffbe3; border: 1px solid #fef08a; border-radius: 8px; }
+        .info-box { background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 12px; padding: 15px; margin: 10px 0 20px; font-size: 13px; line-height: 1.5; }
+        .info-box strong { color: var(--emerald-dark); }
+        .info-box p { margin: 6px 0; }
+        .connection-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+        .connection-card { background: #f0fdf4; border-radius: 10px; padding: 12px; font-size: 12px; }
 
         .icon-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; margin: 25px 0; text-align: center; }
         .icon-item img { width: 40px; height: 40px; margin-bottom: 5px; }
@@ -75,6 +79,7 @@
         @media (max-width: 600px) {
             .inputs-grid { grid-template-columns: repeat(2, 1fr); }
             .icon-grid { grid-template-columns: repeat(2, 1fr); }
+            .connection-grid { grid-template-columns: 1fr; }
             .container { padding: 20px 15px; margin: 10px auto; }
         }
     </style>
@@ -104,13 +109,44 @@
 
         <span class="section-title">SELECCIONA TU TARIFA ELÉCTRICA</span>
         <select id="tarifaCFE" onchange="recalcular()">
-            <option value="PDBT" selected>PDBT - Pequeña Demanda Baja Tensión (Residencial/Comercial Pequeño)</option>
+            <optgroup label="Domésticas">
+                <option value="1" selected>Tarifa 1</option>
+                <option value="1A">Tarifa 1A</option>
+                <option value="1B">Tarifa 1B</option>
+                <option value="1C">Tarifa 1C</option>
+                <option value="1D">Tarifa 1D</option>
+                <option value="1E">Tarifa 1E</option>
+                <option value="1F">Tarifa 1F</option>
+                <option value="DAC">DAC - Doméstica de Alto Consumo</option>
+            </optgroup>
+            <optgroup label="Comerciales y otras">
+                <option value="PDBT">PDBT - Pequeña Demanda Baja Tensión</option>
             <option value="GDBT">GDBT - Gran Demanda Baja Tensión</option>
             <option value="GDMTO">GDMTO - Gran Demanda Media Tensión Ordinaria</option>
             <option value="GDMTH">GDMTH - Gran Demanda Media Tensión Horaria</option>
-            <option value="DAC">DAC - Doméstica de Alto Consumo</option>
             <option value="01">01 / 1F - Residencial Subsidada</option>
+            </optgroup>
         </select>
+        <div class="info-box" id="tarifaInfo" aria-live="polite"></div>
+        <div class="info-box">
+            <label for="regionDAC"><strong>Región de referencia para DAC</strong></label>
+            <select id="regionDAC" onchange="recalcular()">
+                <option value="central">Central / CDMX · $6.869 MXN/kWh</option>
+                <option value="norte">Norte y Noreste · $6.269 MXN/kWh</option>
+                <option value="bcs" selected>Baja California Sur (verano) · $7.278 MXN/kWh</option>
+            </select>
+            <p id="estimacionDAC" aria-live="polite"></p>
+        </div>
+
+        <span class="section-title">INFRAESTRUCTURA DE CONEXIÓN (HILOS)</span>
+        <div class="info-box">
+            <div class="connection-grid">
+                <div class="connection-card"><strong>Monofásico · 2 hilos</strong><br>Una fase y neutro · 127 V · hasta 5 kW. Adecuado para viviendas estándar.</div>
+                <div class="connection-card"><strong>Bifásico · 3 hilos</strong><br>Dos fases y neutro · 220 V · hasta 25 kW. Útil para varias cargas de alta potencia.</div>
+                <div class="connection-card"><strong>Trifásico · 4 hilos</strong><br>Tres fases y neutro · 220/440 V · más de 25 kW. Usado en comercios, talleres y residencias grandes.</div>
+            </div>
+            <p><strong>El número de hilos no cambia el precio del kWh.</strong> Solo describe la conexión y capacidad eléctrica disponible.</p>
+        </div>
 
         <span class="section-title">Panel a Utilizar</span>
         <select id="potenciaPanel" onchange="recalcular()">
@@ -191,44 +227,12 @@
 <div id="internal-db">
     <script>
         // CONSTANTE COMERCIAL INMUTABLE
-        const FACTOR_USD_PER_WATT = 0.80;
+        const FACTOR_USD_PER_WATT = 0.70;
 
         // CATALOGO UNIFICADO INTERNO
         const catalogoInterno = [
             // Productos Base Originales Clasificados (Sin campos price)
-            { sku: "SLK-30K-3P", marca: "Sol-Ark", modelo: "30K-3P", name: "Sol-Ark 30Kw 3P Industrial", categoria: "inversor", potenciaSalidaW: 30000, capacidadKw: 30, hibrido: true, fases: "Trifásico", voltajeRed: "480V", seleccionableComoInversor: true, maxUnitsParallel: 10, statusParallel: "COMPATIBLE", img: "Sol-Ark_30Kw_3P.png" },
-            { sku: "SLK-15K-220V", marca: "Sol-Ark", modelo: "15K-220V", name: "Sol-Ark 15Kw 48V-220VCA", categoria: "inversor", potenciaSalidaW: 15000, capacidadKw: 15, hibrido: true, fases: "Monofásico", voltajeRed: "220V", seleccionableComoInversor: true, maxUnitsParallel: 10, statusParallel: "COMPATIBLE", img: "Sol-Ark_15Kw_48V-220VCA.png" },
-            { sku: "SLK-12K-2P", marca: "Sol-Ark", modelo: "12K2P-p", name: "Sol-Ark 12K2P-p", categoria: "inversor", potenciaSalidaW: 12000, capacidadKw: 12, hibrido: true, fases: "Monofásico", voltajeRed: "220V", seleccionableComoInversor: true, maxUnitsParallel: 10, statusParallel: "COMPATIBLE", img: "12K2P-p-SOL-ARK.png" },
-            { sku: "SLK-8K-48V", marca: "Sol-Ark", modelo: "8K-48V", name: "Sol-Ark 8Kw 48V", categoria: "inversor", potenciaSalidaW: 8000, capacidadKw: 8, hibrido: true, fases: "Monofásico", voltajeRed: "220V", seleccionableComoInversor: true, maxUnitsParallel: 10, statusParallel: "COMPATIBLE", img: "8Kw_48V_SOL-ARK.png" },
-            { sku: "EPCOM-RES200-10K", marca: "EPCOM", modelo: "RES200-10K", name: "EPCOM RES200 10K", categoria: "inversor", potenciaSalidaW: 10000, capacidadKw: 10, hibrido: true, fases: "Monofásico", voltajeRed: "220V", seleccionableComoInversor: true, maxUnitsParallel: 1, statusParallel: "PENDIENTE DE VALIDACIÓN TÉCNICA", img: "RES20010K-p.PNG" },
-            { sku: "GWT-SPF-6000T", marca: "Growatt", modelo: "SPF 6000T DVM-G2", name: "Growatt SPF 6000T DVM-G2", categoria: "inversor", potenciaSalidaW: 6000, capacidadKw: 6, hibrido: true, fases: "Monofásico", voltajeRed: "220V", seleccionableComoInversor: true, maxUnitsParallel: 6, statusParallel: "COMPATIBLE", img: "SPF6000TDVMG2-p.PNG" },
-            { sku: "EPCOM-RES100-2K", marca: "EPCOM", modelo: "RES100-2K", name: "EPCOM RES100 2KW", categoria: "inversor", potenciaSalidaW: 2000, capacidadKw: 2, hibrido: false, fases: "Monofásico", voltajeRed: "110V", seleccionableComoInversor: true, maxUnitsParallel: 1, statusParallel: "PENDIENTE DE VALIDACIÓN TÉCNICA", img: "RES1005K-p.PNG" },
-            { sku: "GWT-SPF-3000-48P", marca: "Growatt", modelo: "SPF 3000TL LVM-48P", name: "Growatt SPF 3000TL LVM-48P", categoria: "inversor", potenciaSalidaW: 3000, capacidadKw: 3, hibrido: false, fases: "Monofásico", voltajeRed: "110V", seleccionableComoInversor: true, maxUnitsParallel: 6, statusParallel: "COMPATIBLE", img: "SPF3000TLLVM48P-p.PNG" },
-            { sku: "GWT-SPF-3000-ES", marca: "Growatt", modelo: "SPF 3000TL LVM-ES", name: "Growatt SPF 3000TL LVM-ES", categoria: "inversor", potenciaSalidaW: 3000, capacidadKw: 3, hibrido: false, fases: "Monofásico", voltajeRed: "110V", seleccionableComoInversor: true, maxUnitsParallel: 6, statusParallel: "COMPATIBLE", img: "SPF3000TLLVMES-Growatt_48V_110v.png" },
-
-            // Baterías
-            { sku: "BAT-PYTES-11.7K", marca: "Pytes", modelo: "48v 11.7 Kw", categoria: "bateria", capacidadKwh: 11.7, voltaje: "48V", tech: "LiFePO4", seleccionableComoInversor: false },
-            { sku: "BAT-PYTES-5.1K", marca: "Pytes", modelo: "Litio 48v 5.1 Kw", categoria: "bateria", capacidadKwh: 5.1, voltaje: "48V", tech: "LiFePO4", seleccionableComoInversor: false },
-            { sku: "BAT-PYTES-EBOX", marca: "Pytes", modelo: "EBOX 48100R", categoria: "bateria", capacidadKwh: 5.12, voltaje: "48V", tech: "LiFePO4", seleccionableComoInversor: false },
-            { sku: "BAT-GWT-AXE", marca: "Growatt", modelo: "AXE 5.0LC1", categoria: "bateria", capacidadKwh: 5.0, voltaje: "48V", tech: "LiFePO4", seleccionableComoInversor: false },
-            { sku: "BAT-RLB-PRO", marca: "RLB", modelo: "RLB10048 PRO", categoria: "bateria", capacidadKwh: 5.12, voltaje: "48V", tech: "LiFePO4", seleccionableComoInversor: false },
-            { sku: "BAT-MUST-5.1K", marca: "Must", modelo: "48V 5.1 Kw", categoria: "bateria", capacidadKwh: 5.1, voltaje: "48V", tech: "LiFePO4", seleccionableComoInversor: false },
-            { sku: "BAT-RLB-MAX", marca: "RLB", modelo: "RLB10048 MAX", categoria: "bateria", capacidadKwh: 5.12, voltaje: "48V", tech: "LiFePO4", seleccionableComoInversor: false },
-
-            // Paneles
-            { sku: "PAN-LP-700W", marca: "LP", modelo: "LP210 700W", categoria: "panel", watts: 700, seleccionableComoInversor: false },
-            { sku: "PAN-EPC-540W", marca: "EPCOM", modelo: "EPL540M144", categoria: "panel", watts: 540, seleccionableComoInversor: false },
-            { sku: "PAN-EPC-440W", marca: "EPCOM", modelo: "EPL440M144", categoria: "panel", watts: 440, seleccionableComoInversor: false },
-
-            // Paquetes y Accesorios Base
-            { sku: "PKG-SOLARK-8K", marca: "Sol-Ark", modelo: "KIT HYBRID 8K SOL-ARK", categoria: "paquete", seleccionableComoInversor: false },
-            { sku: "PKG-SOLARK-15K", marca: "Sol-Ark", modelo: "Sol-Ark 15Kw + 4 LiFePO4", categoria: "paquete", seleccionableComoInversor: false },
-            { sku: "PKG-LUX-12K", marca: "Lux Power", modelo: "Lux Power 12Kw + 3 LiFePO4", categoria: "paquete", seleccionableComoInversor: false },
-            { sku: "PKG-VEKTOR-8R", marca: "VEKTOR", modelo: "KIT 8PV VEKTOR 8R", categoria: "paquete", seleccionableComoInversor: false },
-            { sku: "ACC-PL16ACD", marca: "EPCOM", modelo: "Accesorio PL16ACD", categoria: "accesorio", seleccionableComoInversor: false }
-        ];
-
-        const catalogoAdicional = [
+            
             // ==================================================
             // SOLIS - INVERSORES S6 / S5
             // ==================================================
@@ -268,58 +272,6 @@
             { sku: "PV-INH-3P60KHV-SL", marca: "Solis", modelo: "S6 60K 3F 480V Híbrido BAT HV", categoria: "inversor", potenciaSalidaW: 60000, certificaciones: ["UL", "IEEE"], voltajeRed: "480V", fases: "Trifásico", hibrido: true, tipoBateria: "Alto voltaje", seleccionableComoInversor: true },
 
             // ==================================================
-            // SOLIS - ACCESORIOS
-            // ==================================================
-            { sku: "PV-IN-EPM3PR-SL", marca: "Solis", modelo: "EPM3 5G PRO 3F 220-480V", categoria: "accesorio", potenciaSalidaW: null, certificaciones: [], voltajeRed: "220-480V", fases: "Trifásico", seleccionableComoInversor: false },
-            { sku: "PV-MD-CT-SL", marca: "Solis", modelo: "CT 1 pieza 100A:33.3mA 1F", categoria: "accesorio", potenciaSalidaW: null, certificaciones: [], voltajeRed: null, fases: "Monofásico", seleccionableComoInversor: false },
-            { sku: "PV-MD-3P300-SL", marca: "Solis", modelo: "CT 3 piezas 300A:5A 3F", categoria: "accesorio", potenciaSalidaW: null, certificaciones: [], voltajeRed: null, fases: "Trifásico", seleccionableComoInversor: false },
-            { sku: "PV-INM-GLWF-SL", marca: "Solis", modelo: "WIFI GL-S (2.0) (S3-WiFi-ST)", categoria: "accesorio", potenciaSalidaW: null, certificaciones: [], voltajeRed: null, fases: null, seleccionableComoInversor: false },
-            { sku: "PV-IN-MTWF-SL", marca: "Solis", modelo: "ACC MONITOREO SOLIS WIFI STICK", categoria: "accesorio", potenciaSalidaW: null, certificaciones: [], voltajeRed: null, fases: null, seleccionableComoInversor: false },
-            { sku: "PV-IN-LAN-SL", marca: "Solis", modelo: "ACC SOLIS MONITOREO LAN 4 PINES", categoria: "accesorio", potenciaSalidaW: null, certificaciones: [], voltajeRed: null, fases: null, seleccionableComoInversor: false },
-
-            // ==================================================
-            // GOODWE - INVERSORES MIC / MIN / MID / MAC / MAX
-            // ==================================================
-            { sku: "PV-IN-TL2KX2-GW", marca: "GoodWe", modelo: "MIC 2K 1F 220V TL-X2", categoria: "inversor", potenciaSalidaW: 2000, certificaciones: ["FIDE", "UL", "IEEE"], voltajeRed: "220V", fases: "Monofásico", hibrido: false, seleccionableComoInversor: true },
-            { sku: "PV-IN-TL25KX2-GW", marca: "GoodWe", modelo: "MIC 2.5K 1F 220V TL-X2", categoria: "inversor", potenciaSalidaW: 2500, certificaciones: ["FIDE", "UL", "IEEE"], voltajeRed: "220V", fases: "Monofásico", hibrido: false, seleccionableComoInversor: true },
-            { sku: "PV-IN-TL3KX2-GW", marca: "GoodWe", modelo: "MIC 3K 1F 220V TL-X2", categoria: "inversor", potenciaSalidaW: 3000, certificaciones: ["FIDE", "UL", "IEEE"], voltajeRed: "220V", fases: "Monofásico", hibrido: false, seleccionableComoInversor: true },
-            { sku: "PV-IN-TL33KX2-GW", marca: "GoodWe", modelo: "MIC 3.3K 1F 220V TL-X2", categoria: "inversor", potenciaSalidaW: 3300, certificaciones: ["FIDE", "UL", "IEEE"], voltajeRed: "220V", fases: "Monofásico", hibrido: false, seleccionableComoInversor: true },
-            { sku: "PV-IN-TL36KX2-GW", marca: "GoodWe", modelo: "MIN 3.6K 1F 220V TL-X2", categoria: "inversor", potenciaSalidaW: 3600, certificaciones: ["FIDE", "UL", "IEEE"], voltajeRed: "220V", fases: "Monofásico", hibrido: false, seleccionableComoInversor: true },
-            { sku: "PV-IN-TL42KX2-GW", marca: "GoodWe", modelo: "MIN 4.2K 1F 220V TL-X2", categoria: "inversor", potenciaSalidaW: 4200, certificaciones: ["FIDE", "UL", "IEEE"], voltajeRed: "220V", fases: "Monofásico", hibrido: false, seleccionableComoInversor: true },
-            { sku: "PV-IN-TL5KX2-GW", marca: "GoodWe", modelo: "MIN 5K 1F 220V TL-X2", categoria: "inversor", potenciaSalidaW: 5000, certificaciones: ["FIDE", "UL", "IEEE"], voltajeRed: "220V", fases: "Monofásico", hibrido: false, seleccionableComoInversor: true },
-            { sku: "PV-IN-TL6KX2-GW", marca: "GoodWe", modelo: "MIN 6K 1F 220V TL-X2", categoria: "inversor", potenciaSalidaW: 6000, certificaciones: ["FIDE", "UL", "IEEE"], voltajeRed: "220V", fases: "Monofásico", hibrido: false, seleccionableComoInversor: true },
-            { sku: "PV-IN-TL8KX2-GW", marca: "GoodWe", modelo: "MIN 8K 1F 220V TL-X2", categoria: "inversor", potenciaSalidaW: 8000, certificaciones: ["UL", "IEEE"], voltajeRed: "220V", fases: "Monofásico", hibrido: false, seleccionableComoInversor: true },
-            { sku: "PV-IN-TL10KX2-GW", marca: "GoodWe", modelo: "MIN 10K 1F 220V TL-X2", categoria: "inversor", potenciaSalidaW: 10000, certificaciones: ["UL", "IEEE"], voltajeRed: "220V", fases: "Monofásico", hibrido: false, seleccionableComoInversor: true },
-            { sku: "PV-IN-MID15-GW", marca: "GoodWe", modelo: "MID 15K 3F 220V TL3-XL2", categoria: "inversor", potenciaSalidaW: 15000, certificaciones: ["UL", "IEEE"], voltajeRed: "220V", fases: "Trifásico", hibrido: false, seleccionableComoInversor: true },
-            { sku: "PV-IN-MID20-GW", marca: "GoodWe", modelo: "MID 20K 3F 220V TL3-XL2", categoria: "inversor", potenciaSalidaW: 20000, certificaciones: ["UL", "IEEE"], voltajeRed: "220V", fases: "Trifásico", hibrido: false, seleccionableComoInversor: true },
-            { sku: "PV-IN-MID25-GW", marca: "GoodWe", modelo: "MID 25K 3F 220V TL3-XL2", categoria: "inversor", potenciaSalidaW: 25000, certificaciones: ["UL", "IEEE"], voltajeRed: "220V", fases: "Trifásico", hibrido: false, seleccionableComoInversor: true },
-            { sku: "PV-IN-KTL3302-GW", marca: "GoodWe", modelo: "MAC 30K 3F 220V KTL3-XL2", categoria: "inversor", potenciaSalidaW: 30000, certificaciones: ["UL", "IEEE"], voltajeRed: "220V", fases: "Trifásico", hibrido: false, seleccionableComoInversor: true },
-            { sku: "PV-IN-KTL3362-GW", marca: "GoodWe", modelo: "MAC 36K 3F 220V KTL3-XL2", categoria: "inversor", potenciaSalidaW: 36000, certificaciones: ["UL", "IEEE"], voltajeRed: "220V", fases: "Trifásico", hibrido: false, seleccionableComoInversor: true },
-            { sku: "PV-IN-KT350-GW", marca: "GoodWe", modelo: "MAC 50K 3F 480V CM TL3", categoria: "inversor", potenciaSalidaW: 50000, certificaciones: ["UL", "IEEE"], voltajeRed: "480V", fases: "Trifásico", hibrido: false, seleccionableComoInversor: true },
-            { sku: "PV-IN-KTL3-60-GRW", marca: "GoodWe", modelo: "MAX 60K 3F 220V KTL3", categoria: "inversor", potenciaSalidaW: 60000, certificaciones: ["UL", "IEEE"], voltajeRed: "220V", fases: "Trifásico", hibrido: false, seleccionableComoInversor: true },
-            { sku: "PV-IN-KTL370-GW", marca: "GoodWe", modelo: "MAC 70K 3F 480V KTL3-XL", categoria: "inversor", potenciaSalidaW: 70000, certificaciones: ["UL", "IEEE"], voltajeRed: "480V", fases: "Trifásico", hibrido: false, seleccionableComoInversor: true },
-            { sku: "PV-IN-KTL3-75-GRW", marca: "GoodWe", modelo: "MAX 75K 3F 220V KTL3", categoria: "inversor", potenciaSalidaW: 75000, certificaciones: ["UL", "IEEE"], voltajeRed: "220V", fases: "Trifásico", hibrido: false, seleccionableComoInversor: true },
-            { sku: "PV-IN-KTL3-124-GRW", marca: "GoodWe", modelo: "MAX 124K 3F 480V KTL3", categoria: "inversor", potenciaSalidaW: 124000, certificaciones: ["UL", "IEEE"], voltajeRed: "480V", fases: "Trifásico", hibrido: false, seleccionableComoInversor: true },
-            { sku: "PV-IN-KTL3-150-GRW", marca: "GoodWe", modelo: "MAX 150K 3F 480V KTL3", categoria: "inversor", potenciaSalidaW: 150000, certificaciones: ["UL", "IEEE"], voltajeRed: "480V", fases: "Trifásico", hibrido: false, seleccionableComoInversor: true },
-
-            // ==================================================
-            // GOODWE - INVERSOR HÍBRIDO
-            // ==================================================
-            { sku: "PV-IN-HYB10-GW", marca: "GoodWe", modelo: "SPH 10K 1F 220V Híbrido", categoria: "inversor", potenciaSalidaW: 10000, certificaciones: ["UL", "IEEE"], voltajeRed: "220V", fases: "Monofásico", hibrido: true, seleccionableComoInversor: true },
-
-            // ==================================================
-            // GOODWE - ACCESORIOS
-            // ==================================================
-            { sku: "PV-IN-MSPX-GRW", marca: "GoodWe", modelo: "ACC MONITOREO SHINE WIFI-X", categoria: "accesorio", potenciaSalidaW: null, certificaciones: [], voltajeRed: null, fases: null, seleccionableComoInversor: false },
-            { sku: "PV-IN-MTSS-GRW", marca: "GoodWe", modelo: "ACC MONITOREO SHINE WIFI-S", categoria: "accesorio", potenciaSalidaW: null, certificaciones: [], voltajeRed: null, fases: null, seleccionableComoInversor: false },
-            { sku: "PV-IN-4GX-GRW", marca: "GoodWe", modelo: "ACC MONITOREO SHINE 4G-X", categoria: "accesorio", potenciaSalidaW: null, certificaciones: [], voltajeRed: null, fases: null, seleccionableComoInversor: false },
-            { sku: "PV-MON-SMR-GRW", marca: "GoodWe", modelo: "ACC MONITOREO SHINEMASTER", categoria: "accesorio", potenciaSalidaW: null, certificaciones: [], voltajeRed: null, fases: null, seleccionableComoInversor: false },
-            { sku: "PV-ACC-MED-CORR-GRW", marca: "GoodWe", modelo: "ACC MEDIDOR DE CORRIENTE", categoria: "accesorio", potenciaSalidaW: null, certificaciones: [], voltajeRed: null, fases: null, seleccionableComoInversor: false },
-            { sku: "PV-ACC-SEM22-100-GRW", marca: "GoodWe", modelo: "ACC SEM 100KW", categoria: "accesorio", potenciaSalidaW: null, certificaciones: [], voltajeRed: null, fases: null, seleccionableComoInversor: false },
-            { sku: "PV-ACC-SEM48-200-GRW", marca: "GoodWe", modelo: "ACC SEM-D 200KW", categoria: "accesorio", potenciaSalidaW: null, certificaciones: [], voltajeRed: null, fases: null, seleccionableComoInversor: false },
-            { sku: "PV-ACC-SEM300-GRW", marca: "GoodWe", modelo: "ACC SEM 300KW", categoria: "accesorio", potenciaSalidaW: null, certificaciones: [], voltajeRed: null, fases: null, seleccionableComoInversor: false },
-
-            // ==================================================
             // HUAWEI - INVERSORES SUN2000
             // ==================================================
             { sku: "PV-IN-20K3P-HUA", marca: "Huawei", modelo: "SUN2000 20K 3F 220V", categoria: "inversor", potenciaSalidaW: 20000, certificaciones: ["IEEE"], voltajeRed: "220V", fases: "Trifásico", hibrido: false, seleccionableComoInversor: true },
@@ -339,22 +291,40 @@
             { sku: "PV-INH-8K1P-HUA", marca: "Huawei", modelo: "SUN2000 8K 1F 220V", categoria: "inversor", potenciaSalidaW: 8000, certificaciones: ["FIDE", "IEEE"], voltajeRed: "220V", fases: "Monofásico", hibrido: true, seleccionableComoInversor: true, observacion: "La descripción original no incluye explícitamente la palabra Híbrido" },
             { sku: "PV-INH-10K1P-HUA", marca: "Huawei", modelo: "SUN2000 10K 1F 220V", categoria: "inversor", potenciaSalidaW: 10000, certificaciones: ["FIDE", "IEEE"], voltajeRed: "220V", fases: "Monofásico", hibrido: true, seleccionableComoInversor: true, observacion: "La descripción original no incluye explícitamente la palabra Híbrido" },
 
-            // ==================================================
-            // HUAWEI - ACCESORIOS
-            // ==================================================
-            { sku: "PV-MON-SMTL-HUA", marca: "Huawei", modelo: "MONITOREO SMARTLOGGER 3000A", categoria: "accesorio", potenciaSalidaW: null, certificaciones: [], voltajeRed: null, fases: null, seleccionableComoInversor: false },
-            { sku: "PV-MON-ADA06-HUA", marca: "Huawei", modelo: "MONITOREO SDONGLE 4G 06", categoria: "accesorio", potenciaSalidaW: null, certificaciones: [], voltajeRed: null, fases: null, seleccionableComoInversor: false },
-            { sku: "PV-MON-05WL-HUA", marca: "Huawei", modelo: "MONITOREO SDONGLE 05 WLAN", categoria: "accesorio", potenciaSalidaW: null, certificaciones: [], voltajeRed: null, fases: null, seleccionableComoInversor: false },
-            { sku: "PV-ACC-DCDC-HUA", marca: "Huawei", modelo: "ACC CONVERTIDOR DC/DC", categoria: "accesorio", potenciaSalidaW: null, certificaciones: [], voltajeRed: null, fases: null, seleccionableComoInversor: false },
-            { sku: "PV-ACC-DC10-HUA", marca: "Huawei", modelo: "ACC HUAWEI CONTROLADOR 10KW", categoria: "accesorio", potenciaSalidaW: 10000, certificaciones: [], voltajeRed: null, fases: null, seleccionableComoInversor: false, observacion: "Tiene capacidad indicada, pero está clasificado como accesorio" },
-            { sku: "PV-ACC-ATF-HUA", marca: "Huawei", modelo: "ACC ATF 5K 1F 60HZ", categoria: "accesorio", potenciaSalidaW: 5000, certificaciones: [], voltajeRed: "240V/120V", fases: "Monofásico", seleccionableComoInversor: false },
-            { sku: "PV-ACC-BOX-HUA", marca: "Huawei", modelo: "ACC BACKUP BOX BO", categoria: "accesorio", potenciaSalidaW: null, certificaciones: [], voltajeRed: null, fases: null, seleccionableComoInversor: false },
-            { sku: "PV-ACC-DT60-HUA", marca: "Huawei", modelo: "ACC METER DTSU666-HW/YDS60-80", categoria: "accesorio", potenciaSalidaW: null, certificaciones: [], voltajeRed: null, fases: null, seleccionableComoInversor: false },
-            { sku: "PV-ACC-CC3M-HUA", marca: "Huawei", modelo: "ACC CABLE ALIM 180A 2P 1TF 3M", categoria: "accesorio", potenciaSalidaW: null, certificaciones: [], voltajeRed: null, fases: null, seleccionableComoInversor: false }
-        ];
+          ];
 
+        // GROWATT (GRW y GW se reconocen como alias de marca)
+        const catalogoAdicional = [
+            { sku: "PV-IN-TL2KX2-GW", marca: "Growatt", modelo: "MIC 2K 1F 220V TL-X2", categoria: "inversor", potenciaSalidaW: 2000, certificaciones: ["FIDE", "UL", "IEEE"], voltajeRed: "220V", fases: "Monofásico", hibrido: false, seleccionableComoInversor: true },
+            { sku: "PV-IN-TL25KX2-GW", marca: "Growatt", modelo: "MIC 2.5K 1F 220V TL-X2", categoria: "inversor", potenciaSalidaW: 2500, certificaciones: ["FIDE", "UL", "IEEE"], voltajeRed: "220V", fases: "Monofásico", hibrido: false, seleccionableComoInversor: true },
+            { sku: "PV-IN-TL3KX2-GW", marca: "Growatt", modelo: "MIC 3K 1F 220V TL-X2", categoria: "inversor", potenciaSalidaW: 3000, certificaciones: ["FIDE", "UL", "IEEE"], voltajeRed: "220V", fases: "Monofásico", hibrido: false, seleccionableComoInversor: true },
+            { sku: "PV-IN-TL33KX2-GW", marca: "Growatt", modelo: "MIC 3.3K 1F 220V TL-X2", categoria: "inversor", potenciaSalidaW: 3300, certificaciones: ["FIDE", "UL", "IEEE"], voltajeRed: "220V", fases: "Monofásico", hibrido: false, seleccionableComoInversor: true },
+            { sku: "PV-IN-TL36KX2-GW", marca: "Growatt", modelo: "MIN 3.6K 1F 220V TL-X2", categoria: "inversor", potenciaSalidaW: 3600, certificaciones: ["FIDE", "UL", "IEEE"], voltajeRed: "220V", fases: "Monofásico", hibrido: false, seleccionableComoInversor: true },
+            { sku: "PV-IN-TL42KX2-GW", marca: "Growatt", modelo: "MIN 4.2K 1F 220V TL-X2", categoria: "inversor", potenciaSalidaW: 4200, certificaciones: ["FIDE", "UL", "IEEE"], voltajeRed: "220V", fases: "Monofásico", hibrido: false, seleccionableComoInversor: true },
+            { sku: "PV-IN-TL5KX2-GW", marca: "Growatt", modelo: "MIN 5K 1F 220V TL-X2", categoria: "inversor", potenciaSalidaW: 5000, certificaciones: ["FIDE", "UL", "IEEE"], voltajeRed: "220V", fases: "Monofásico", hibrido: false, seleccionableComoInversor: true },
+            { sku: "PV-IN-TL6KX2-GW", marca: "Growatt", modelo: "MIN 6K 1F 220V TL-X2", categoria: "inversor", potenciaSalidaW: 6000, certificaciones: ["FIDE", "UL", "IEEE"], voltajeRed: "220V", fases: "Monofásico", hibrido: false, seleccionableComoInversor: true },
+            { sku: "PV-IN-TL8KX2-GW", marca: "Growatt", modelo: "MIN 8K 1F 220V TL-X2", categoria: "inversor", potenciaSalidaW: 8000, certificaciones: ["UL", "IEEE"], voltajeRed: "220V", fases: "Monofásico", hibrido: false, seleccionableComoInversor: true },
+            { sku: "PV-IN-TL10KX2-GW", marca: "Growatt", modelo: "MIN 10K 1F 220V TL-X2", categoria: "inversor", potenciaSalidaW: 10000, certificaciones: ["UL", "IEEE"], voltajeRed: "220V", fases: "Monofásico", hibrido: false, seleccionableComoInversor: true },
+            { sku: "PV-IN-MID15-GW", marca: "Growatt", modelo: "MID 15K 3F 220V TL3-XL2", categoria: "inversor", potenciaSalidaW: 15000, certificaciones: ["UL", "IEEE"], voltajeRed: "220V", fases: "Trifásico", hibrido: false, seleccionableComoInversor: true },
+            { sku: "PV-IN-MID20-GW", marca: "Growatt", modelo: "MID 20K 3F 220V TL3-XL2", categoria: "inversor", potenciaSalidaW: 20000, certificaciones: ["UL", "IEEE"], voltajeRed: "220V", fases: "Trifásico", hibrido: false, seleccionableComoInversor: true },
+            { sku: "PV-IN-MID25-GW", marca: "Growatt", modelo: "MID 25K 3F 220V TL3-XL2", categoria: "inversor", potenciaSalidaW: 25000, certificaciones: ["UL", "IEEE"], voltajeRed: "220V", fases: "Trifásico", hibrido: false, seleccionableComoInversor: true },
+            { sku: "PV-IN-KTL3302-GW", marca: "Growatt", modelo: "MAC 30K 3F 220V KTL3-XL2", categoria: "inversor", potenciaSalidaW: 30000, certificaciones: ["UL", "IEEE"], voltajeRed: "220V", fases: "Trifásico", hibrido: false, seleccionableComoInversor: true },
+            { sku: "PV-IN-KTL3362-GW", marca: "Growatt", modelo: "MAC 36K 3F 220V KTL3-XL2", categoria: "inversor", potenciaSalidaW: 36000, certificaciones: ["UL", "IEEE"], voltajeRed: "220V", fases: "Trifásico", hibrido: false, seleccionableComoInversor: true },
+            { sku: "PV-IN-KT350-GW", marca: "Growatt", modelo: "MAC 50K 3F 480V CM TL3", categoria: "inversor", potenciaSalidaW: 50000, certificaciones: ["UL", "IEEE"], voltajeRed: "480V", fases: "Trifásico", hibrido: false, seleccionableComoInversor: true },
+            { sku: "PV-IN-KTL3-60-GRW", marca: "Growatt", modelo: "MAX 60K 3F 220V KTL3", categoria: "inversor", potenciaSalidaW: 60000, certificaciones: ["UL", "IEEE"], voltajeRed: "220V", fases: "Trifásico", hibrido: false, seleccionableComoInversor: true },
+            { sku: "PV-IN-KTL370-GW", marca: "Growatt", modelo: "MAC 70K 3F 480V KTL3-XL", categoria: "inversor", potenciaSalidaW: 70000, certificaciones: ["UL", "IEEE"], voltajeRed: "480V", fases: "Trifásico", hibrido: false, seleccionableComoInversor: true },
+            { sku: "PV-IN-KTL3-75-GRW", marca: "Growatt", modelo: "MAX 75K 3F 220V KTL3", categoria: "inversor", potenciaSalidaW: 75000, certificaciones: ["UL", "IEEE"], voltajeRed: "220V", fases: "Trifásico", hibrido: false, seleccionableComoInversor: true },
+            { sku: "PV-IN-KTL3-124-GRW", marca: "Growatt", modelo: "MAX 124K 3F 480V KTL3", categoria: "inversor", potenciaSalidaW: 124000, certificaciones: ["UL", "IEEE"], voltajeRed: "480V", fases: "Trifásico", hibrido: false, seleccionableComoInversor: true },
+            { sku: "PV-IN-KTL3-150-GRW", marca: "Growatt", modelo: "MAX 150K 3F 480V KTL3", categoria: "inversor", potenciaSalidaW: 150000, certificaciones: ["UL", "IEEE"], voltajeRed: "480V", fases: "Trifásico", hibrido: false, seleccionableComoInversor: true },
+            { sku: "PV-IN-HYB10-GW", marca: "Growatt", modelo: "SPH 10K 1F 220V Híbrido", categoria: "inversor", potenciaSalidaW: 10000, certificaciones: ["UL", "IEEE"], voltajeRed: "220V", fases: "Monofásico", hibrido: true, seleccionableComoInversor: true }
+        ];
         // Fusionar catálogo adicional en el catálogo interno
         catalogoInterno.push(...catalogoAdicional);
+
+        function normalizarMarca(marca) {
+            const nombre = String(marca || "").trim().toLowerCase();
+            return ["grw", "gw", "growatt"].includes(nombre) ? "growatt" : nombre;
+        }
 
         // FUNCIONES DE BÚSQUEDA Y FILTRADO DEL CATÁLOGO
         function obtenerInversores() {
@@ -397,15 +367,16 @@
         }
 
         function obtenerProductosPorMarca(marca) {
+            const marcaNormalizada = normalizarMarca(marca);
             return catalogoInterno.filter(
-                producto => producto.marca.toLowerCase() === marca.toLowerCase()
+                producto => normalizarMarca(producto.marca) === marcaNormalizada
             );
         }
 
         function obtenerInversoresPorMarca(marca) {
             return catalogoInterno.filter(
                 producto =>
-                    producto.marca.toLowerCase() === marca.toLowerCase() &&
+                    normalizarMarca(producto.marca) === normalizarMarca(marca) &&
                     producto.categoria === "inversor" &&
                     producto.seleccionableComoInversor === true
             );
@@ -421,7 +392,7 @@
                 if (producto.categoria !== "inversor") return false;
                 if (!producto.seleccionableComoInversor) return false;
 
-                if (marca && producto.marca !== marca) return false;
+                if (marca && normalizarMarca(producto.marca) !== normalizarMarca(marca)) return false;
                 if (fases && producto.fases !== fases) return false;
                 if (voltajeRed && producto.voltajeRed !== voltajeRed) return false;
                 if (hibrido !== null && producto.hibrido !== hibrido) return false;
@@ -444,14 +415,44 @@
             });
         }
 
-        // PARÁMETROS DE TARIFAS CFE
+        // Escalones residenciales bimestrales y rangos indicativos proporcionados.
+        // Las cuotas pueden cambiar por mes, localidad y temporada; no son una tarifa oficial en tiempo real.
+        const tarifasResidenciales = {
+            "1":  { basico: 150, intermedio: 130, dacBimestral: 500, temperatura: "Menos de 25°C" },
+            "1A": { basico: 200, intermedio: 100, dacBimestral: 600, temperatura: "25°C o más" },
+            "1B": { basico: 250, intermedio: 200, dacBimestral: 800, temperatura: "28°C o más" },
+            "1C": { basico: 300, intermedio: 600, dacBimestral: 1700, temperatura: "30°C o más" },
+            "1D": { basico: 350, intermedio: 850, dacBimestral: 2000, temperatura: "31°C o más" },
+            "1E": { basico: 600, intermedio: 1400, dacBimestral: 4000, temperatura: "32°C o más" },
+            "1F": { basico: 600, intermedio: 4400, dacBimestral: 5000, temperatura: "33°C o más" }
+        };
+        const preciosResidencialesMXN = {
+            basico: { minimo: 1.13, maximo: 1.15 },
+            intermedio: { minimo: 1.38, maximo: 1.41 },
+            excedente: { minimo: 4.04, maximo: 4.08 },
+            dacCargoFijoMensual: 146.01
+        };
+        const preciosDACMXN = {
+            central: { nombre: "Central / CDMX", porKwh: 6.869 },
+            norte: { nombre: "Norte y Noreste", porKwh: 6.269 },
+            bcs: { nombre: "Baja California Sur (verano)", porKwh: 7.278 }
+        };
+
+        // PARÁMETROS DE TARIFAS CFE PARA EL CÁLCULO FOTOVOLTAICO
         const cfeTariffs = {
-            "PDBT": { name: "PDBT", his: 5.8, maxKw: 25, derating: 0.85 },
-            "GDBT": { name: "GDBT", his: 5.8, maxKw: 50, derating: 0.85 },
-            "GDMTO": { name: "GDMTO", his: 6.0, maxKw: 500, derating: 0.82 },
-            "GDMTH": { name: "GDMTH", his: 6.0, maxKw: 1000, derating: 0.82 },
-            "DAC": { name: "DAC", his: 6.19, maxKw: 25, derating: 0.88 },
-            "01": { name: "01 / 1F", his: 5.8, maxKw: 15, derating: 0.85 }
+            "1": { name: "Tarifa 1", his: 5.9, maxKw: 15, derating: 0.85 },
+            "1A": { name: "Tarifa 1A", his: 5.9, maxKw: 15, derating: 0.85 },
+            "1B": { name: "Tarifa 1B", his: 5.9, maxKw: 15, derating: 0.85 },
+            "1C": { name: "Tarifa 1C", his: 5.9, maxKw: 15, derating: 0.85 },
+            "1D": { name: "Tarifa 1D", his: 5.9, maxKw: 15, derating: 0.85 },
+            "1E": { name: "Tarifa 1E", his: 5.9, maxKw: 15, derating: 0.85 },
+            "1F": { name: "Tarifa 1F", his: 5.9, maxKw: 15, derating: 0.85 },
+            "PDBT": { name: "PDBT", his: 5.9, maxKw: 25, derating: 0.85 },
+            "GDBT": { name: "GDBT", his: 5.9, maxKw: 50, derating: 0.85 },
+            "GDMTO": { name: "GDMTO", his: 5.9, maxKw: 500, derating: 0.82 },
+            "GDMTH": { name: "GDMTH", his: 5.9, maxKw: 1000, derating: 0.82 },
+            "DAC": { name: "DAC", his: 5.9, maxKw: 25, derating: 0.88 },
+            "01": { name: "01 / 1F", his: 5.9, maxKw: 15, derating: 0.85 }
         };
 
         // ESTADO GLOBAL DE LA CALCULADORA
@@ -459,6 +460,49 @@
         let currentCalculatedWatts = 0;
         let selectedInverterConfig = null;
         let suggestedOptions = [];
+
+        function formatoMXN(value) {
+            return new Intl.NumberFormat("es-MX", { style: "currency", currency: "MXN", minimumFractionDigits: 2 }).format(value);
+        }
+
+        function actualizarInfoTarifa(tariffKey, consumoBimestralPromedio) {
+            const info = document.getElementById("tarifaInfo");
+            const estimacionDAC = document.getElementById("estimacionDAC");
+            const tarifas = tarifasResidenciales[tariffKey];
+            const region = preciosDACMXN[document.getElementById("regionDAC").value] || preciosDACMXN.bcs;
+            const consumoMensualPromedio = consumoBimestralPromedio / 2;
+
+            if (tariffKey === "DAC") {
+                const estimadoBimestral = (2 * preciosResidencialesMXN.dacCargoFijoMensual) + (consumoBimestralPromedio * region.porKwh);
+                info.innerHTML = `<strong>Tarifa DAC:</strong> sin bloques de consumo. Cargo fijo de ${formatoMXN(preciosResidencialesMXN.dacCargoFijoMensual)} al mes más ${formatoMXN(region.porKwh)} por kWh para ${region.nombre}.`;
+                estimacionDAC.innerHTML = `Estimación orientativa para el consumo bimestral promedio ingresado (${consumoBimestralPromedio.toFixed(0)} kWh): <strong>${formatoMXN(estimadoBimestral)} por bimestre</strong>.`;
+                return;
+            }
+
+            if (!tarifas) {
+                info.innerHTML = "Consulta el recibo CFE para verificar la tarifa y las cuotas vigentes de tu servicio.";
+                estimacionDAC.innerHTML = "";
+                return;
+            }
+
+            const excedenteDesde = tarifas.basico + tarifas.intermedio + 1;
+            const basicoKwh = Math.min(consumoBimestralPromedio, tarifas.basico);
+            const intermedioKwh = Math.min(Math.max(consumoBimestralPromedio - tarifas.basico, 0), tarifas.intermedio);
+            const excedenteKwh = Math.max(consumoBimestralPromedio - tarifas.basico - tarifas.intermedio, 0);
+            const cargosMinimos = basicoKwh * preciosResidencialesMXN.basico.minimo + intermedioKwh * preciosResidencialesMXN.intermedio.minimo + excedenteKwh * preciosResidencialesMXN.excedente.minimo;
+            const cargosMaximos = basicoKwh * preciosResidencialesMXN.basico.maximo + intermedioKwh * preciosResidencialesMXN.intermedio.maximo + excedenteKwh * preciosResidencialesMXN.excedente.maximo;
+            const limiteDACMensual = tarifas.dacBimestral / 2;
+            const estadoDAC = consumoMensualPromedio > limiteDACMensual
+                ? `<p style="color:#b91c1c"><strong>Promedio ingresado por encima del umbral de referencia DAC (${limiteDACMensual} kWh/mes).</strong> La clasificación real depende del promedio móvil de los últimos 12 meses.</p>`
+                : `<p>Umbral DAC de referencia: más de ${tarifas.dacBimestral.toLocaleString("es-MX")} kWh/bimestre (>${limiteDACMensual.toLocaleString("es-MX")} kWh/mes).</p>`;
+
+            info.innerHTML = `<strong>${tariffKey === "1" ? "Tarifa 1" : `Tarifa ${tariffKey}`} · referencia térmica: ${tarifas.temperatura}</strong>
+                <p>Básico: primeros ${tarifas.basico.toLocaleString("es-MX")} kWh/bimestre · intermedio: siguientes ${tarifas.intermedio.toLocaleString("es-MX")} kWh · excedente: desde ${excedenteDesde.toLocaleString("es-MX")} kWh.</p>
+                <p>Rangos de referencia: básico ${formatoMXN(preciosResidencialesMXN.basico.minimo)}–${formatoMXN(preciosResidencialesMXN.basico.maximo)}/kWh; intermedio ${formatoMXN(preciosResidencialesMXN.intermedio.minimo)}–${formatoMXN(preciosResidencialesMXN.intermedio.maximo)}/kWh; excedente ${formatoMXN(preciosResidencialesMXN.excedente.minimo)}–${formatoMXN(preciosResidencialesMXN.excedente.maximo)}/kWh.</p>
+                <p>El bloque intermedio se amplía durante el verano para las tarifas 1C–1F; fuera de temporada sus límites cambian.</p>${estadoDAC}
+                <p>Las tarifas domésticas se asignan por localidad según las temperaturas oficiales de verano. Verifica la clasificación en tu recibo.</p>`;
+            estimacionDAC.innerHTML = `Costo de energía orientativo con los bloques y rangos ingresados: <strong>${formatoMXN(cargosMinimos)}–${formatoMXN(cargosMaximos)} por bimestre</strong> para un promedio de ${consumoBimestralPromedio.toFixed(0)} kWh. No incluye otros conceptos del recibo.`;
+        }
 
         function initApp() {
             // Poblar selector manual de inversores desde el catálogo unificado de inversores
@@ -498,6 +542,8 @@
             const avgBimestral = totalBimestral / 6;
             const avgDailyKwh = avgBimestral / 60; 
             const panelW = Number(document.getElementById('potenciaPanel').value) || 680;
+
+            actualizarInfoTarifa(tariffKey, avgBimestral);
             
             const numPaneles = Math.ceil(avgDailyKwh / ((panelW / 1000) * tariff.his * tariff.derating)) || 0;
             currentCalculatedWatts = numPaneles * panelW;
