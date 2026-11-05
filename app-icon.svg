@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Calculadora Solar Baja Pro-Services">
+  <defs><linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#064e3b"/><stop offset="1" stop-color="#0d705e"/></linearGradient></defs>
+  <path fill="url(#bg)" d="M0 0h512v512H0z"/>
+  <g stroke="#ffc64c" stroke-width="12" stroke-linecap="round"><path d="M365 41v22M365 221v22M264 142h-22M488 142h-22M294 71l-16-16M452 229l-16-16M294 213l-16 16M452 55l-16 16"/></g>
+  <circle cx="365" cy="142" r="65" fill="#ffc33d"/><circle cx="365" cy="142" r="46" fill="#ffdd70"/>
+  <path d="m70 255 299-20 70 162-328 23z" fill="#0c3043" stroke="#96efd7" stroke-width="12" stroke-linejoin="round"/>
+  <g clip-path="url(#panel)" stroke="#4bc5ba" stroke-width="7"><path d="m141 230 35 200m39-200 35 200m39-200 35 200m39-200 35 200M55 300l390-22M55 348l390-22"/></g>
+  <defs><clipPath id="panel"><path d="m70 255 299-20 70 162-328 23z"/></clipPath></defs>
+  <path d="m267 281-47 67 38-4-19 45 68-68-37 4z" fill="#ffc33d"/>
+</svg>
