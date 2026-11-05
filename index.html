@@ -141,7 +141,7 @@
 
         <span class="section-title">MOTOR INTELIGENTE DE SUGERENCIAS DE INVERSORES</span>
         <div id="sugerenciasContainer" class="suggestion-grid">
-            <!-- Alternativas generadas dinámicamente -->
+            <!-- Alternativas generadas dinámicamente sin restringir marca ni cantidad -->
         </div>
 
         <span class="section-title">CONFIGURACIÓN MANUAL DE INVERSORES</span>
@@ -196,15 +196,15 @@
         // CATALOGO UNIFICADO INTERNO
         const catalogoInterno = [
             // Productos Base Originales Clasificados (Sin campos price)
-            { sku: "SLK-30K-3P", marca: "Sol-Ark", modelo: "30K-3P", name: "Sol-Ark 30Kw 3P Industrial", categoria: "inversor", potenciaSalidaW: 30000, capacidadKw: 30, hibrido: true, fases: "Trifásico", voltajeRed: "480V", seleccionableComoInversor: true, maxUnitsParallel: 3, statusParallel: "COMPATIBLE", img: "Sol-Ark_30Kw_3P.png" },
-            { sku: "SLK-15K-220V", marca: "Sol-Ark", modelo: "15K-220V", name: "Sol-Ark 15Kw 48V-220VCA", categoria: "inversor", potenciaSalidaW: 15000, capacidadKw: 15, hibrido: true, fases: "Monofásico", voltajeRed: "220V", seleccionableComoInversor: true, maxUnitsParallel: 3, statusParallel: "COMPATIBLE", img: "Sol-Ark_15Kw_48V-220VCA.png" },
-            { sku: "SLK-12K-2P", marca: "Sol-Ark", modelo: "12K2P-p", name: "Sol-Ark 12K2P-p", categoria: "inversor", potenciaSalidaW: 12000, capacidadKw: 12, hibrido: true, fases: "Monofásico", voltajeRed: "220V", seleccionableComoInversor: true, maxUnitsParallel: 3, statusParallel: "COMPATIBLE", img: "12K2P-p-SOL-ARK.png" },
-            { sku: "SLK-8K-48V", marca: "Sol-Ark", modelo: "8K-48V", name: "Sol-Ark 8Kw 48V", categoria: "inversor", potenciaSalidaW: 8000, capacidadKw: 8, hibrido: true, fases: "Monofásico", voltajeRed: "220V", seleccionableComoInversor: true, maxUnitsParallel: 3, statusParallel: "COMPATIBLE", img: "8Kw_48V_SOL-ARK.png" },
+            { sku: "SLK-30K-3P", marca: "Sol-Ark", modelo: "30K-3P", name: "Sol-Ark 30Kw 3P Industrial", categoria: "inversor", potenciaSalidaW: 30000, capacidadKw: 30, hibrido: true, fases: "Trifásico", voltajeRed: "480V", seleccionableComoInversor: true, maxUnitsParallel: 10, statusParallel: "COMPATIBLE", img: "Sol-Ark_30Kw_3P.png" },
+            { sku: "SLK-15K-220V", marca: "Sol-Ark", modelo: "15K-220V", name: "Sol-Ark 15Kw 48V-220VCA", categoria: "inversor", potenciaSalidaW: 15000, capacidadKw: 15, hibrido: true, fases: "Monofásico", voltajeRed: "220V", seleccionableComoInversor: true, maxUnitsParallel: 10, statusParallel: "COMPATIBLE", img: "Sol-Ark_15Kw_48V-220VCA.png" },
+            { sku: "SLK-12K-2P", marca: "Sol-Ark", modelo: "12K2P-p", name: "Sol-Ark 12K2P-p", categoria: "inversor", potenciaSalidaW: 12000, capacidadKw: 12, hibrido: true, fases: "Monofásico", voltajeRed: "220V", seleccionableComoInversor: true, maxUnitsParallel: 10, statusParallel: "COMPATIBLE", img: "12K2P-p-SOL-ARK.png" },
+            { sku: "SLK-8K-48V", marca: "Sol-Ark", modelo: "8K-48V", name: "Sol-Ark 8Kw 48V", categoria: "inversor", potenciaSalidaW: 8000, capacidadKw: 8, hibrido: true, fases: "Monofásico", voltajeRed: "220V", seleccionableComoInversor: true, maxUnitsParallel: 10, statusParallel: "COMPATIBLE", img: "8Kw_48V_SOL-ARK.png" },
             { sku: "EPCOM-RES200-10K", marca: "EPCOM", modelo: "RES200-10K", name: "EPCOM RES200 10K", categoria: "inversor", potenciaSalidaW: 10000, capacidadKw: 10, hibrido: true, fases: "Monofásico", voltajeRed: "220V", seleccionableComoInversor: true, maxUnitsParallel: 1, statusParallel: "PENDIENTE DE VALIDACIÓN TÉCNICA", img: "RES20010K-p.PNG" },
-            { sku: "GWT-SPF-6000T", marca: "Growatt", modelo: "SPF 6000T DVM-G2", name: "Growatt SPF 6000T DVM-G2", categoria: "inversor", potenciaSalidaW: 6000, capacidadKw: 6, hibrido: true, fases: "Monofásico", voltajeRed: "220V", seleccionableComoInversor: true, maxUnitsParallel: 3, statusParallel: "COMPATIBLE", img: "SPF6000TDVMG2-p.PNG" },
+            { sku: "GWT-SPF-6000T", marca: "Growatt", modelo: "SPF 6000T DVM-G2", name: "Growatt SPF 6000T DVM-G2", categoria: "inversor", potenciaSalidaW: 6000, capacidadKw: 6, hibrido: true, fases: "Monofásico", voltajeRed: "220V", seleccionableComoInversor: true, maxUnitsParallel: 6, statusParallel: "COMPATIBLE", img: "SPF6000TDVMG2-p.PNG" },
             { sku: "EPCOM-RES100-2K", marca: "EPCOM", modelo: "RES100-2K", name: "EPCOM RES100 2KW", categoria: "inversor", potenciaSalidaW: 2000, capacidadKw: 2, hibrido: false, fases: "Monofásico", voltajeRed: "110V", seleccionableComoInversor: true, maxUnitsParallel: 1, statusParallel: "PENDIENTE DE VALIDACIÓN TÉCNICA", img: "RES1005K-p.PNG" },
-            { sku: "GWT-SPF-3000-48P", marca: "Growatt", modelo: "SPF 3000TL LVM-48P", name: "Growatt SPF 3000TL LVM-48P", categoria: "inversor", potenciaSalidaW: 3000, capacidadKw: 3, hibrido: false, fases: "Monofásico", voltajeRed: "110V", seleccionableComoInversor: true, maxUnitsParallel: 3, statusParallel: "COMPATIBLE", img: "SPF3000TLLVM48P-p.PNG" },
-            { sku: "GWT-SPF-3000-ES", marca: "Growatt", modelo: "SPF 3000TL LVM-ES", name: "Growatt SPF 3000TL LVM-ES", categoria: "inversor", potenciaSalidaW: 3000, capacidadKw: 3, hibrido: false, fases: "Monofásico", voltajeRed: "110V", seleccionableComoInversor: true, maxUnitsParallel: 3, statusParallel: "COMPATIBLE", img: "SPF3000TLLVMES-Growatt_48V_110v.png" },
+            { sku: "GWT-SPF-3000-48P", marca: "Growatt", modelo: "SPF 3000TL LVM-48P", name: "Growatt SPF 3000TL LVM-48P", categoria: "inversor", potenciaSalidaW: 3000, capacidadKw: 3, hibrido: false, fases: "Monofásico", voltajeRed: "110V", seleccionableComoInversor: true, maxUnitsParallel: 6, statusParallel: "COMPATIBLE", img: "SPF3000TLLVM48P-p.PNG" },
+            { sku: "GWT-SPF-3000-ES", marca: "Growatt", modelo: "SPF 3000TL LVM-ES", name: "Growatt SPF 3000TL LVM-ES", categoria: "inversor", potenciaSalidaW: 3000, capacidadKw: 3, hibrido: false, fases: "Monofásico", voltajeRed: "110V", seleccionableComoInversor: true, maxUnitsParallel: 6, statusParallel: "COMPATIBLE", img: "SPF3000TLLVMES-Growatt_48V_110v.png" },
 
             // Baterías
             { sku: "BAT-PYTES-11.7K", marca: "Pytes", modelo: "48v 11.7 Kw", categoria: "bateria", capacidadKwh: 11.7, voltaje: "48V", tech: "LiFePO4", seleccionableComoInversor: false },
@@ -352,6 +352,9 @@
             { sku: "PV-ACC-DT60-HUA", marca: "Huawei", modelo: "ACC METER DTSU666-HW/YDS60-80", categoria: "accesorio", potenciaSalidaW: null, certificaciones: [], voltajeRed: null, fases: null, seleccionableComoInversor: false },
             { sku: "PV-ACC-CC3M-HUA", marca: "Huawei", modelo: "ACC CABLE ALIM 180A 2P 1TF 3M", categoria: "accesorio", potenciaSalidaW: null, certificaciones: [], voltajeRed: null, fases: null, seleccionableComoInversor: false }
         ];
+
+        // Fusionar catálogo adicional en el catálogo interno
+        catalogoInterno.push(...catalogoAdicional);
 
         // FUNCIONES DE BÚSQUEDA Y FILTRADO DEL CATÁLOGO
         function obtenerInversores() {
@@ -530,8 +533,13 @@
 
             const inversoresValidos = obtenerInversores();
 
-            // Buscar combinaciones óptimas de 1, 2 y 3 unidades
-            [1, 2, 3].forEach(qty => {
+            // Búsqueda dinámicamente escalada para sugerir combinaciones de 1, 2, 3 o más inversores de la misma marca según la necesidad
+            const cantidadesSugeridas = [1, 2, 3];
+            
+            // Si la capacidad requerida es muy alta, permitir evaluar cantidades mayores dinámicamente
+            if (targetKw > 40) cantidadesSugeridas.push(4, 5, 6);
+
+            cantidadesSugeridas.forEach(qty => {
                 let bestMatch = null;
                 let minDiff = Infinity;
 
@@ -539,11 +547,9 @@
                     const capIndividualKw = inv.potenciaSalidaW ? (inv.potenciaSalidaW / 1000) : (inv.capacidadKw || 0);
                     const totalCap = capIndividualKw * qty;
                     
-                    const maxParallel = inv.maxUnitsParallel || 3;
                     const statusParallel = inv.statusParallel || (inv.certificaciones && inv.certificaciones.includes("UL") ? "COMPATIBLE" : "PENDIENTE DE VALIDACIÓN TÉCNICA");
 
                     if (qty > 1 && statusParallel === "NO COMPATIBLE") return;
-                    if (qty > maxParallel) return;
 
                     if (totalCap >= targetKw * 0.85) {
                         const diff = Math.abs(totalCap - targetKw);
@@ -627,7 +633,7 @@
         function cambiarCantidadInversor(delta) {
             let qty = parseInt(document.getElementById('invCantidadDisplay').innerText) + delta;
             if (qty < 1) qty = 1;
-            if (qty > 3) qty = 3;
+            // Se elimina la restricción máxima artificial para permitir agregar 1 + 2 + 3... según necesidades
 
             document.getElementById('invCantidadDisplay').innerText = qty;
             actualizarSeleccionManual();
@@ -647,7 +653,7 @@
             if (qty > 1) {
                 if (statusParallel === "PENDIENTE DE VALIDACIÓN TÉCNICA") {
                     status = "PENDIENTE DE VALIDACIÓN TÉCNICA";
-                } else if (statusParallel === "NO COMPATIBLE" || qty > (inv.maxUnitsParallel || 3)) {
+                } else if (statusParallel === "NO COMPATIBLE") {
                     status = "NO COMPATIBLE";
                 }
             }
@@ -741,4 +747,3 @@
 
 </body>
 </html>
-```
